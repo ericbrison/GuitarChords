@@ -27,8 +27,6 @@ jobs:
 
       # Site 100 % statique : aucun build, on publie le dépôt tel quel.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
