@@ -522,9 +522,11 @@ footer.app {
 
 .neck-wrap {
   margin: 6px 16px 0;
-  /* seul l'axe du manche défile ici (natif) ; la page garde tout le reste */
+  /* seul l'axe du manche défile ici (natif) ; la page garde tout le reste ;
+     pan-x pan-y : un doigt reste natif, le pincement est livré à l'app */
   overflow-x: auto;
   overflow-y: hidden;
+  touch-action: pan-x pan-y;
 }
 .neck-canvas { width: max-content; margin: 0 auto; }
 .neck-wrap.zoomed { cursor: grab; }

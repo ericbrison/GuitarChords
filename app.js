@@ -21,7 +21,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
@@ -659,19 +659,77 @@ function refreshScales() {
    gestuel : le défilement, natif, ne concerne que l'axe du manche. */
 const NECK_ZOOMS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
+function snapNeckZoom(k) {
+  return NECK_ZOOMS.reduce((a, b) => Math.abs(b - k) < Math.abs(a - k) ? b : a);
+}
+
+/* change de palier en gardant le point d'ancrage (le long du manche)
+   sous le doigt / au centre de la vue */
+function neckSetZoom(k, anchorX) {
+  if (k === state.neckZoom) return;
+  const wrap = $('neckWrap');
+  const ax = anchorX != null ? anchorX : wrap.clientWidth / 2;
+  const kOld = state.neckZoom;
+  const focus = (wrap.scrollLeft + ax) / kOld;
+  state.neckZoom = k;
+  try { localStorage.setItem('guitarchords.neckzoom', String(k)); } catch (e) {}
+  refreshScales();
+  wrap.scrollLeft = focus * k - ax;
+}
+
 function neckZoomStep(dir) {
   const i = NECK_ZOOMS.indexOf(state.neckZoom);
   const j = Math.min(NECK_ZOOMS.length - 1, Math.max(0, (i < 0 ? 0 : i) + dir));
-  if (NECK_ZOOMS[j] === state.neckZoom) return;
-  state.neckZoom = NECK_ZOOMS[j];
-  try { localStorage.setItem('guitarchords.neckzoom', String(state.neckZoom)); } catch (e) {}
-  refreshScales();
+  neckSetZoom(NECK_ZOOMS[j]);
 }
 
 function updateNeckZoomUI() {
   $('neckZoomLabel').textContent = Math.round(state.neckZoom * 100) + '\u202f%';
   $('neckZoomOut').disabled = state.neckZoom <= NECK_ZOOMS[0];
   $('neckZoomIn').disabled = state.neckZoom >= NECK_ZOOMS[NECK_ZOOMS.length - 1];
+}
+
+/* --- pincement asservi aux paliers ---
+   Deux doigts : le rapport d'écartement choisit le palier le plus proche,
+   re-rendu à chaque changement. Un doigt : défilement natif, intact. */
+const neckPtrs = new Map();
+let pinch0 = null;
+
+function neckPointerDown(e) {
+  if (e.pointerType !== 'touch') return;
+  neckPtrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (neckPtrs.size === 2) {
+    const [a, b] = [...neckPtrs.values()];
+    pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, k: state.neckZoom };
+  }
+}
+
+function neckPointerMove(e) {
+  const p = neckPtrs.get(e.pointerId);
+  if (!p) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (neckPtrs.size !== 2 || !pinch0) return;
+  const [a, b] = [...neckPtrs.values()];
+  const target = snapNeckZoom(pinch0.k * Math.hypot(a.x - b.x, a.y - b.y) / pinch0.d);
+  if (target !== state.neckZoom) {
+    const rect = $('neckWrap').getBoundingClientRect();
+    neckSetZoom(target, (a.x + b.x) / 2 - rect.left);
+  }
+  e.preventDefault();
+}
+
+function neckPointerUp(e) {
+  neckPtrs.delete(e.pointerId);
+  if (neckPtrs.size < 2) pinch0 = null;
+}
+
+function neckWheel(e) {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  const rect = $('neckWrap').getBoundingClientRect();
+  const i = NECK_ZOOMS.indexOf(state.neckZoom);
+  const j = Math.min(NECK_ZOOMS.length - 1, Math.max(0, i + (e.deltaY < 0 ? 1 : -1)));
+  neckSetZoom(NECK_ZOOMS[j], e.clientX - rect.left);
 }
 
 /* manche complet, quatre orientations.
@@ -974,6 +1032,11 @@ $('neckWrap').addEventListener('click', e => {
 });
 $('neckZoomIn').addEventListener('click', () => neckZoomStep(1));
 $('neckZoomOut').addEventListener('click', () => neckZoomStep(-1));
+$('neckWrap').addEventListener('pointerdown', neckPointerDown);
+$('neckWrap').addEventListener('pointermove', neckPointerMove);
+$('neckWrap').addEventListener('pointerup', neckPointerUp);
+$('neckWrap').addEventListener('pointercancel', neckPointerUp);
+$('neckWrap').addEventListener('wheel', neckWheel, { passive: false });
 applyBig();
 applyTheme(false);
 document.documentElement.dataset.tool = state.tool;

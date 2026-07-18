@@ -84,8 +84,8 @@ extensibles dans `TUNINGS` (midi des cordes à vide, grave → aigu).
 
 L'onglet « Gammes » affiche une gamme sur tout le manche (manche horizontal,
 défilement tactile, notes colorées par degré ou par note, toucher une note la
-joue). Agrandissement par boutons − / +
-(100 % à 300 %) : le manche est redessiné avec des cases, pastilles et textes
+joue). Agrandissement par boutons − / + ou par
+pincement à deux doigts, asservi aux mêmes paliers (100 % à 300 %) : le manche est redessiné avec des cases, pastilles et textes
 plus grands ; le défilement, natif, ne concerne que l'axe du manche, la page
 gardant le défilement vertical. Quatre orientations dans ⚙ : horizontal sillet à gauche ou à droite
 (gauchers), vertical sillet en haut ou en bas (pratique en portrait, la page
