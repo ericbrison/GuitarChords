@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v15">
+<link rel="stylesheet" href="style.css?v16">
 </head>
 <body>
 
@@ -61,17 +61,6 @@
     <input type="checkbox" id="optBig">
   </div>
   <div class="row">
-    <label for="optNeck">Manche (gammes)
-      <span class="hint">Sillet à droite pour les gauchers</span>
-    </label>
-    <select id="optNeck">
-      <option value="h-left" selected>Horizontal — sillet à gauche</option>
-      <option value="h-right">Horizontal — sillet à droite (gaucher)</option>
-      <option value="v-top">Vertical — sillet en haut</option>
-      <option value="v-bottom">Vertical — sillet en bas</option>
-    </select>
-  </div>
-  <div class="row">
     <label for="optTheme">Thème</label>
     <select id="optTheme">
       <option value="auto" selected>Auto (système)</option>
@@ -80,7 +69,7 @@
     </select>
   </div>
   <div class="row">
-    <label for="optMaxFret">Cases explorées</label>
+    <label for="optMaxFret">Cases explorées (accords)</label>
     <select id="optMaxFret">
       <option value="12">12</option>
       <option value="15">15</option>
@@ -151,13 +140,27 @@
     <h1 class="chord-name" id="scaleTitle"></h1>
     <span class="chord-tones" id="scaleTones"></span>
   </div>
+  <div class="selects neck-opts">
+    <select id="optNeck" aria-label="Orientation du manche">
+      <option value="h-left" selected>Horizontal — sillet à gauche</option>
+      <option value="h-right">Horizontal — sillet à droite (gaucher)</option>
+      <option value="v-top">Vertical — sillet en haut</option>
+      <option value="v-bottom">Vertical — sillet en bas</option>
+    </select>
+    <select id="scaleFrets" aria-label="Nombre de cases du manche">
+      <option value="15">15 cases</option>
+      <option value="19">19 cases</option>
+      <option value="22" selected>22 cases</option>
+      <option value="24">24 cases</option>
+    </select>
+  </div>
   <div class="neck-wrap" id="neckWrap"><div class="neck-canvas" id="neckCanvas"></div></div>
   <p class="neck-hint">Touchez une note pour l’entendre · pincez pour zoomer, double-tap pour réinitialiser</p>
 </section>
 
 <footer class="app">Touchez un diagramme pour l’entendre · fonctionne hors-ligne · <span id="appVersion"></span></footer>
 
-<script src="engine.js?v15"></script>
-<script src="app.js?v15"></script>
+<script src="engine.js?v16"></script>
+<script src="app.js?v16"></script>
 </body>
 </html>

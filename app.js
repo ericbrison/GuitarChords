@@ -14,12 +14,13 @@ const state = {
   scale: 'penta-maj',   // id de gamme, 'custom' ou 'savedscale:Nom'
   scaleCustom: null,    // { name, intervals } pour la gamme libre
   neckView: 'h-left',   // orientation du manche : h-left | h-right | v-top | v-bottom
+  scaleMaxFret: 22,     // nombre de cases du manche des gammes (indépendant des accords)
   omit5: true,
   labels: 'intervals',
   maxFret: 22,
 };
 
-const APP_VERSION = 'v15';
+const APP_VERSION = 'v16';
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
@@ -95,6 +96,8 @@ try {
   state.big = localStorage.getItem('guitarchords.big') === '1';
   const nv = localStorage.getItem('guitarchords.neck');
   if (['h-left', 'h-right', 'v-top', 'v-bottom'].includes(nv)) state.neckView = nv;
+  const sf = +localStorage.getItem('guitarchords.scalefrets');
+  if ([15, 19, 22, 24].includes(sf)) state.scaleMaxFret = sf;
 } catch (e) {}
 function persistSaved() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(savedChords)); return true; }
@@ -218,7 +221,13 @@ function buildControls() {
   $('optNeck').addEventListener('change', e => {
     state.neckView = e.target.value;
     try { localStorage.setItem('guitarchords.neck', state.neckView); } catch (err) {}
-    if (state.tool === 'scales') refreshScales();
+    refreshScales();
+  });
+  $('scaleFrets').value = String(state.scaleMaxFret);
+  $('scaleFrets').addEventListener('change', e => {
+    state.scaleMaxFret = +e.target.value;
+    try { localStorage.setItem('guitarchords.scalefrets', String(state.scaleMaxFret)); } catch (err) {}
+    refreshScales();
   });
 
   $('optTheme').value = state.theme;
@@ -774,7 +783,7 @@ function neckSVG(scale, tuning) {
   const sh = big ? 34 : 27;
   const dotR = big ? 12 : 9.6;
   const openZone = fw * 0.75;
-  const N = state.maxFret;
+  const N = state.scaleMaxFret;
 
   const x0 = 8 + openZone;                 // position du sillet sur L
   const Llen = x0 + N * fw + 12;
