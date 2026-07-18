@@ -28,8 +28,10 @@ installable sur smartphone (PWA), utilisable hors-ligne.
    git push -u origin main
    ```
 
-2. Sur GitHub : **Settings → Pages → Source : Deploy from a branch**,
-   branche `main`, dossier `/ (root)`.
+2. Sur GitHub : **Settings → Pages → Source : GitHub Actions**.
+   Le workflow `.github/workflows/pages.yml` publie automatiquement le site
+   à chaque push sur `main` (déclenchement manuel possible via l'onglet
+   Actions → « Déployer sur GitHub Pages » → Run workflow).
 
 3. L'app est servie en HTTPS sur `https://ericbrison.github.io/GuitarChords/` —
    tous les chemins du projet sont relatifs, le sous-chemin ne pose aucun
@@ -40,7 +42,7 @@ Installation sur smartphone : ouvrir cette URL dans Chrome/Safari →
 
 **Mise à jour** : après chaque push modifiant les fichiers, incrémenter
 `VERSION` dans `sw.js` (sinon le service worker servira l'ancienne version
-depuis le cache). Pages redéploie automatiquement à chaque push sur `main`.
+depuis le cache sur les appareils déjà installés).
 
 ### Autre hébergement statique
 
