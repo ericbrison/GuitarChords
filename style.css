@@ -430,3 +430,22 @@ footer.app {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+
+/* ============ Mode grande taille (basse vision) ============ */
+:root[data-big="1"] .grid {
+  grid-template-columns: 1fr;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+:root[data-big="1"] .pos-group { padding-left: 12px; padding-right: 12px; }
+:root[data-big="1"] .pos-head { font-size: 14px; }
+:root[data-big="1"] .pos-head b { font-size: 17px; }
+:root[data-big="1"] .chord-name { font-size: 56px; }
+:root[data-big="1"] .tone { font-size: 17px; padding: 5px 14px 5px 6px; }
+:root[data-big="1"] .tone i { width: 28px; height: 28px; font-size: 13.5px; }
+:root[data-big="1"] .frets-txt { font-size: 15px; }
+:root[data-big="1"] .badge { font-size: 13px; }
+:root[data-big="1"] .fretbar-info { font-size: 15px; }
+:root[data-big="1"] .free-msg { font-size: 14.5px; }

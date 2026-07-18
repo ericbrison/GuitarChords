@@ -30,7 +30,7 @@
   </div>
   <div class="freechord">
     <input id="freeInput" placeholder="Accord libre… ex. CM7add11, F♯m7♭5/A"
-           autocapitalize="characters" autocomplete="off" spellcheck="false"
+           autocapitalize="sentences" autocomplete="off" spellcheck="false"
            aria-label="Nom d’accord libre">
     <button id="freeGo" title="Chercher les positions" aria-label="Chercher">→</button>
     <button id="freeSave" title="Enregistrer ce type d’accord" aria-label="Enregistrer">★</button>
@@ -55,6 +55,12 @@
         <label>Mes accords enregistrés</label>
         <div class="saved-list" id="savedList"></div>
       </div>
+    </div>
+    <div class="row">
+      <label for="optBig">Grande taille
+        <span class="hint">Une colonne, pastilles et textes agrandis</span>
+      </label>
+      <input type="checkbox" id="optBig">
     </div>
     <div class="row">
       <label for="optTheme">Thème</label>

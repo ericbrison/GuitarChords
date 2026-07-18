@@ -7,6 +7,7 @@ const state = {
   tuning: 'guitar-std',
   bass: 'all',          // 'all' ou intervalle imposé à la basse (0 = fondamentale)
   theme: 'auto',
+  big: false,           // mode basse vision : une colonne, éléments agrandis
   fretMin: null,        // filtre de position : plage de cases [fretMin, fretMax]
   fretMax: null,
   omit5: true,
@@ -35,6 +36,10 @@ function resolvedTheme() {
   if (state.theme === 'light' || state.theme === 'dark') return state.theme;
   return mqLight && mqLight.matches ? 'light' : 'dark';
 }
+function applyBig() {
+  document.documentElement.dataset.big = state.big ? '1' : '0';
+}
+
 function applyTheme(rerender) {
   const t = resolvedTheme();
   document.documentElement.dataset.theme = t;
@@ -81,6 +86,7 @@ try {
                 localStorage.getItem('manche.chords') || '[]');  // migration ancien nom
   const th = localStorage.getItem(THEME_KEY);
   if (th === 'light' || th === 'dark' || th === 'auto') state.theme = th;
+  state.big = localStorage.getItem('guitarchords.big') === '1';
 } catch (e) {}
 function persistSaved() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(savedChords)); return true; }
@@ -150,6 +156,14 @@ function buildControls() {
     const open = $('options').classList.toggle('open');
     $('gearBtn').setAttribute('aria-expanded', String(open));
   });
+  $('optBig').checked = state.big;
+  $('optBig').addEventListener('change', e => {
+    state.big = e.target.checked;
+    try { localStorage.setItem('guitarchords.big', state.big ? '1' : '0'); } catch (err) {}
+    applyBig();
+    refresh();
+  });
+
   $('optTheme').value = state.theme;
   $('optTheme').addEventListener('change', e => {
     state.theme = e.target.value;
@@ -453,6 +467,8 @@ function diagramSVG(v, tuning) {
   const sx = s => LEFT + gridW * (s / (nS - 1));
   const fy = r => TOP + r * fretH;           // ligne de frette r (0 = sillet/haut)
   const base = v.baseFret;
+  const big = state.big;
+  const dotR = big ? 11 : 9.4, openR = big ? 8.8 : 7.4;
   const s2 = [];
 
   s2.push('<svg viewBox="0 0 ' + W + ' ' + H + '" role="img">');
@@ -511,7 +527,7 @@ function diagramSVG(v, tuning) {
   for (let s = 0; s < nS; s++) {
     const f = v.frets[s], x = sx(s);
     if (f === MUTE) {
-      s2.push('<text x="' + x + '" y="' + (TOP - 8) + '" text-anchor="middle" font-size="12"' +
+      s2.push('<text x="' + x + '" y="' + (TOP - 8) + '" text-anchor="middle" font-size="' + (big ? 14 : 12) + '"' +
         ' font-weight="700" font-family="system-ui" fill="' + DIAG.mute + '">\u2715</text>');
       continue;
     }
@@ -521,17 +537,18 @@ function diagramSVG(v, tuning) {
     const label = state.labels === 'notes' ? NOTE_NAMES[pc]
       : ((curChord.labels && curChord.labels[iv]) || INTERVAL_LABELS[iv]);
     const [bg, fg] = toneColor(iv, pc);
-    const small = label.length > 2 ? 7.4 : label.length > 1 ? 8.2 : 9.5;
+    let small = label.length > 2 ? 7.4 : label.length > 1 ? 8.2 : 9.5;
+    if (big) small += 1.8;
     if (f === 0) {
       // corde à vide : anneau coloré au-dessus du sillet
-      s2.push('<circle cx="' + x + '" cy="' + (TOP - 13) + '" r="7.4" fill="' + DIAG.openBg + '"' +
+      s2.push('<circle cx="' + x + '" cy="' + (TOP - 13) + '" r="' + openR + '" fill="' + DIAG.openBg + '"' +
         ' stroke="' + bg + '" stroke-width="2.4"/>');
       s2.push('<text x="' + x + '" y="' + (TOP - 13 + small * .36) + '" text-anchor="middle"' +
         ' font-size="' + (small - 1) + '" font-weight="700"' +
         ' font-family="ui-monospace,Menlo,monospace" fill="' + bg + '">' + label + '</text>');
     } else {
       const cy = fy(f - base) + fretH / 2;
-      s2.push('<circle cx="' + x + '" cy="' + cy + '" r="9.4" fill="' + bg + '"' +
+      s2.push('<circle cx="' + x + '" cy="' + cy + '" r="' + dotR + '" fill="' + bg + '"' +
         ' stroke="' + DIAG.dotStroke + '" stroke-width="1"/>');
       s2.push('<text x="' + x + '" y="' + (cy + small * .36) + '" text-anchor="middle"' +
         ' font-size="' + small + '" font-weight="700"' +
@@ -602,6 +619,7 @@ function onCardTap(e) {
    Démarrage + PWA
    ============================================================ */
 buildControls();
+applyBig();
 applyTheme(false);
 refresh();
 
