@@ -77,6 +77,17 @@ jouabilité (fondamentale à la basse, nb de doigts, écart, cordes jouées).
 Accordages fournis : guitare standard, drop D, DADGAD, basse 4 et 5 cordes —
 extensibles dans `TUNINGS` (midi des cordes à vide, grave → aigu).
 
+## Outil gammes
+
+L'onglet « Gammes » affiche une gamme sur tout le manche (manche horizontal,
+défilement tactile, notes colorées par degré ou par note, toucher une note la
+joue). 14 gammes prédéfinies (pentatoniques, blues, modes, mineures
+harmonique/mélodique, tons entiers). Les 12 pastilles de degrés permettent de
+personnaliser : sur la pentatonique mineure, toucher ♭5 ajoute la blue note.
+Le bouton ★ enregistre la gamme sous le nom saisi (localStorage, groupe
+« ★ Mes gammes », transposable) ; gestion dans ⚙. Une gamme personnalisée est
+partageable par URL (`#tool=s&g=custom&gi=0,3,5,6,7,10&gn=…`).
+
 ## Accords libres et accords enregistrés
 
 Le champ « Accord libre » accepte n'importe quel nom : `CM7add11`,

@@ -18,6 +18,11 @@
   <span class="tagline">Positions d’accords</span>
 </header>
 
+<nav class="tools" aria-label="Outils">
+  <button id="tabChords" aria-pressed="true">Accords</button>
+  <button id="tabScales" aria-pressed="false">Gammes</button>
+</nav>
+
 <div class="controls">
   <div class="selects">
     <select id="rootSel" aria-label="Fondamentale"></select>
@@ -25,7 +30,6 @@
   </div>
   <div class="selects">
     <select id="optBass" aria-label="Basse de l’accord"></select>
-    <select id="tuning" aria-label="Accordage"></select>
     <button class="gear" id="gearBtn" aria-expanded="false" aria-controls="options" title="Options">⚙</button>
   </div>
   <div class="freechord">
@@ -49,6 +53,16 @@
         <option value="intervals" selected>Intervalles</option>
         <option value="notes">Notes</option>
       </select>
+    </div>
+    <div class="row">
+      <label for="tuning">Accordage</label>
+      <select id="tuning"></select>
+    </div>
+    <div class="row" id="savedScalesRow" hidden>
+      <div style="flex:1">
+        <label>Mes gammes enregistrées</label>
+        <div class="saved-list" id="savedScalesList"></div>
+      </div>
     </div>
     <div class="row" id="savedRow" hidden>
       <div style="flex:1">
@@ -106,6 +120,27 @@
 <div class="more-wrap" id="moreWrap" hidden>
   <button class="more" id="moreBtn"></button>
 </div>
+
+<section id="toolScales">
+  <div class="selects">
+    <select id="scaleRoot" aria-label="Fondamentale de la gamme"></select>
+    <select id="scaleSel" aria-label="Gamme"></select>
+  </div>
+  <div class="ivchips" id="ivChips" aria-label="Degrés de la gamme (toucher pour ajouter/retirer)"></div>
+  <div class="freechord">
+    <input id="scaleName" placeholder="Nom de votre gamme… ex. Penta blues perso"
+           autocapitalize="sentences" autocomplete="off" spellcheck="false"
+           aria-label="Nom de la gamme personnalisée">
+    <button id="scaleSave" title="Enregistrer cette gamme" aria-label="Enregistrer">★</button>
+  </div>
+  <div class="free-msg" id="scaleMsg" role="status"></div>
+  <div class="chord-banner">
+    <h1 class="chord-name" id="scaleTitle"></h1>
+    <span class="chord-tones" id="scaleTones"></span>
+  </div>
+  <div class="neck-wrap" id="neckWrap"></div>
+  <p class="neck-hint">Touchez une note pour l’entendre · faites défiler le manche horizontalement</p>
+</section>
 
 <footer class="app">Touchez un diagramme pour l’entendre · fonctionne hors-ligne</footer>
 

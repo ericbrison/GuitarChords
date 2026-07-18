@@ -10,6 +10,9 @@ const state = {
   big: false,           // mode basse vision : une colonne, éléments agrandis
   fretMin: null,        // filtre de position : plage de cases [fretMin, fretMax]
   fretMax: null,
+  tool: 'chords',       // outil actif : 'chords' | 'scales'
+  scale: 'penta-maj',   // id de gamme, 'custom' ou 'savedscale:Nom'
+  scaleCustom: null,    // { name, intervals } pour la gamme libre
   omit5: true,
   labels: 'intervals',
   maxFret: 15,
@@ -46,7 +49,7 @@ function applyTheme(rerender) {
   DIAG = DIAG_THEMES[t];
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = t === 'light' ? '#F4EFE6' : '#171310';
-  if (rerender) refresh();
+  if (rerender) refreshCurrent();
 }
 if (mqLight && mqLight.addEventListener) {
   mqLight.addEventListener('change', () => { if (state.theme === 'auto') applyTheme(true); });
@@ -92,6 +95,27 @@ function persistSaved() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(savedChords)); return true; }
   catch (e) { return false; }
 }
+const LS_SCALES = 'guitarchords.scales';
+let savedScales = [];
+try { savedScales = JSON.parse(localStorage.getItem(LS_SCALES) || '[]'); } catch (e) {}
+function persistScales() {
+  try { localStorage.setItem(LS_SCALES, JSON.stringify(savedScales)); return true; }
+  catch (e) { return false; }
+}
+
+function currentScale() {
+  if (state.scale === 'custom' && state.scaleCustom) return state.scaleCustom;
+  if (state.scale.startsWith('savedscale:')) {
+    const s = savedScales.find(x => 'savedscale:' + x.name === state.scale);
+    if (s) return s;
+  }
+  return SCALES.find(s => s.id === state.scale) || SCALES[0];
+}
+
+function refreshCurrent() {
+  if (state.tool === 'scales') refreshScales(); else refresh();
+}
+
 function currentChord() {
   if (state.type === 'custom' && state.custom) return state.custom;
   if (state.type.startsWith('saved:')) {
@@ -116,6 +140,19 @@ try {
   }
   if (h.has('b')) state.bass = +h.get('b');
   if (h.has('fm') && h.has('fx')) { state.fretMin = +h.get('fm'); state.fretMax = +h.get('fx'); }
+  if (h.get('tool') === 's') state.tool = 'scales';
+  if (h.has('g')) {
+    if (h.get('g') === 'custom' && h.has('gi')) {
+      state.scaleCustom = {
+        name: h.get('gn') || 'Gamme libre',
+        intervals: h.get('gi').split(',').map(Number).filter(n => n >= 0 && n < 12),
+      };
+      if (!state.scaleCustom.intervals.includes(0)) state.scaleCustom.intervals.unshift(0);
+      state.scale = 'custom';
+    } else if (SCALES.some(s => s.id === h.get('g'))) {
+      state.scale = h.get('g');
+    }
+  }
 } catch (e) {}
 
 function pushHash() {
@@ -127,6 +164,14 @@ function pushHash() {
       delete p.t;
       p.c = NOTE_NAMES[state.root] + curChord.sym +
             (curChord.bassIv != null ? '/' + NOTE_NAMES[(state.root + curChord.bassIv) % 12] : '');
+    }
+    if (state.tool === 'scales') {
+      p.tool = 's';
+      const sc = currentScale();
+      if (state.scale === 'custom' || state.scale.startsWith('savedscale:')) {
+        p.g = 'custom'; p.gi = sc.intervals.join(','); p.gn = sc.name || sc.label || '';
+      } else p.g = state.scale;
+      delete p.b; delete p.fm; delete p.fx;
     }
     history.replaceState(null, '', '#' + new URLSearchParams(p));
   } catch (e) {}
@@ -150,7 +195,7 @@ function buildControls() {
   const tn = $('tuning');
   TUNINGS.forEach(t => tn.add(new Option(t.label, t.id)));
   tn.value = state.tuning;
-  tn.addEventListener('change', () => { state.tuning = tn.value; refresh(); });
+  tn.addEventListener('change', () => { state.tuning = tn.value; refreshCurrent(); });
 
   $('gearBtn').addEventListener('click', () => {
     const open = $('options').classList.toggle('open');
@@ -161,7 +206,7 @@ function buildControls() {
     state.big = e.target.checked;
     try { localStorage.setItem('guitarchords.big', state.big ? '1' : '0'); } catch (err) {}
     applyBig();
-    refresh();
+    refreshCurrent();
   });
 
   $('optTheme').value = state.theme;
@@ -175,7 +220,7 @@ function buildControls() {
     refresh();
   });
   $('optOmit5').addEventListener('change', e => { state.omit5 = e.target.checked; refresh(); });
-  $('optLabels').addEventListener('change', e => { state.labels = e.target.value; refresh(); });
+  $('optLabels').addEventListener('change', e => { state.labels = e.target.value; refreshCurrent(); });
   $('optMaxFret').addEventListener('change', e => {
     state.maxFret = +e.target.value;
     if (state.fretMax != null && state.fretMax > state.maxFret) {
@@ -208,6 +253,29 @@ function buildControls() {
     $(id).addEventListener('change', commitSlider);
   }
   $('fretbarClear').addEventListener('click', clearFretFilter);
+
+  // onglets outils
+  $('tabChords').addEventListener('click', () => setTool('chords'));
+  $('tabScales').addEventListener('click', () => setTool('scales'));
+
+  // contrôles de l'outil gammes
+  const sr = $('scaleRoot');
+  NOTE_NAMES.forEach((n, i) => sr.add(new Option(n, String(i))));
+  sr.value = String(state.root);
+  sr.addEventListener('change', () => { state.root = +sr.value; refreshScales(); });
+
+  rebuildScaleSelect();
+  $('scaleSel').addEventListener('change', e => { state.scale = e.target.value; refreshScales(); });
+  $('ivChips').addEventListener('click', onIvChipTap);
+  $('scaleSave').addEventListener('click', saveCurrentScale);
+  $('savedScalesList').addEventListener('click', e => {
+    const b = e.target.closest('button[data-del]');
+    if (!b) return;
+    savedScales = savedScales.filter(s => s.name !== b.dataset.del);
+    persistScales();
+    if (state.scale === 'savedscale:' + b.dataset.del) state.scale = 'penta-maj';
+    rebuildScaleSelect(); renderSavedScalesList(); refreshCurrent();
+  });
 
   $('moreBtn').addEventListener('click', renderBatch);
   $('results').addEventListener('click', onCardTap);
@@ -445,6 +513,212 @@ function renderBatch() {
 }
 
 /* ============================================================
+   Outil gammes : manche complet
+   ============================================================ */
+function setTool(t) {
+  state.tool = t;
+  document.documentElement.dataset.tool = t;
+  $('tabChords').setAttribute('aria-pressed', String(t === 'chords'));
+  $('tabScales').setAttribute('aria-pressed', String(t === 'scales'));
+  refreshCurrent();
+}
+
+function rebuildScaleSelect() {
+  const sel = $('scaleSel');
+  sel.innerHTML = '';
+  SCALES.forEach(s => sel.add(new Option(s.label, s.id)));
+  if (savedScales.length) {
+    const og = document.createElement('optgroup');
+    og.label = '\u2605 Mes gammes';
+    savedScales.forEach(s => og.appendChild(new Option(s.name, 'savedscale:' + s.name)));
+    sel.appendChild(og);
+  }
+  if (state.scale === 'custom') {
+    sel.appendChild(new Option('(libre) ' + (state.scaleCustom ? state.scaleCustom.name : ''), 'custom'));
+  }
+  sel.value = state.scale;
+  if (sel.value !== state.scale) { state.scale = 'penta-maj'; sel.value = state.scale; }
+}
+
+function renderSavedScalesList() {
+  $('savedScalesRow').hidden = savedScales.length === 0;
+  $('savedScalesList').innerHTML = savedScales.map(s =>
+    '<span class="saved-item"><span>' + s.name +
+    '</span><button data-del="' + s.name.replace(/"/g, '&quot;') +
+    '" aria-label="Supprimer ' + s.name + '">\u2715</button></span>'
+  ).join('');
+}
+
+function onIvChipTap(e) {
+  const chip = e.target.closest('.ivchip');
+  if (!chip || chip.disabled) return;
+  const iv = +chip.dataset.iv;
+  const cur = currentScale();
+  const set = new Set(cur.intervals);
+  if (set.has(iv)) set.delete(iv); else set.add(iv);
+  set.add(0);
+  state.scaleCustom = {
+    name: (cur.name || cur.label || 'Gamme') + ' \u2726',
+    intervals: [...set].sort((a, b) => a - b),
+  };
+  state.scale = 'custom';
+  rebuildScaleSelect();
+  refreshScales();
+}
+
+function saveCurrentScale() {
+  const cur = currentScale();
+  const name = ($('scaleName').value || '').trim() || cur.name || cur.label;
+  if (SCALES.some(s => s === cur)) {
+    scaleMsg('Cette gamme est d\u00e9j\u00e0 dans la liste pr\u00e9d\u00e9finie \u2014 modifiez un degr\u00e9 avant d\u2019enregistrer.', 'err');
+    return;
+  }
+  const entry = { name, intervals: cur.intervals.slice() };
+  const i = savedScales.findIndex(s => s.name === name);
+  if (i >= 0) savedScales[i] = entry; else savedScales.push(entry);
+  if (!persistScales()) {
+    if (i < 0) savedScales.pop();
+    scaleMsg('Sauvegarde indisponible dans cet environnement (aper\u00e7u). Elle fonctionnera une fois l\u2019app d\u00e9ploy\u00e9e.', 'err');
+    return;
+  }
+  state.scale = 'savedscale:' + name;
+  rebuildScaleSelect(); renderSavedScalesList();
+  scaleMsg('\u2605 \u00ab\u202f' + name + '\u202f\u00bb enregistr\u00e9e \u2014 transposable sur les 12 fondamentales.', 'ok');
+  refreshScales();
+}
+
+function scaleMsg(txt, cls) {
+  const el = $('scaleMsg');
+  el.textContent = txt || '';
+  el.className = 'free-msg' + (cls ? ' ' + cls : '');
+}
+
+function refreshScales() {
+  const sc = currentScale();
+  const tuning = TUNINGS.find(t => t.id === state.tuning);
+  $('scaleRoot').value = String(state.root);
+
+  // pastilles de degrés
+  $('ivChips').innerHTML = Array.from({ length: 12 }, (_, iv) => {
+    const on = sc.intervals.includes(iv);
+    const pc = (state.root + iv) % 12;
+    const [bg, fg] = toneColor(iv, pc);
+    return '<button class="ivchip" data-iv="' + iv + '" aria-pressed="' + on + '"' +
+      (iv === 0 ? ' disabled title="La fondamentale fait toujours partie de la gamme"' : '') +
+      (on ? ' style="--chipbg:' + bg + ';--chipfg:' + fg + '"' : '') +
+      '><b>' + SCALE_LABELS[iv] + '</b><small>' + NOTE_NAMES[pc] + '</small></button>';
+  }).join('');
+
+  const title = NOTE_NAMES[state.root] + ' \u2014 ' + (sc.name || sc.label);
+  $('scaleTitle').textContent = title;
+  document.title = title + ' \u2014 Guitar Chords';
+  $('scaleTones').innerHTML = sc.intervals.map(iv => {
+    const pc = (state.root + iv) % 12;
+    const [bg, fg] = toneColor(iv, pc);
+    return '<span class="tone"><i style="background:' + bg + ';color:' + fg + '">' +
+      SCALE_LABELS[iv] + '</i>' + NOTE_NAMES[pc] + '</span>';
+  }).join('');
+  $('scaleName').value = state.scale.startsWith('savedscale:') ? sc.name
+    : state.scale === 'custom' ? (sc.name || '') : '';
+
+  $('neckWrap').innerHTML = neckSVG(sc, tuning);
+  renderSavedScalesList();
+  pushHash();
+}
+
+/* manche complet horizontal : cordes graves en bas, sillet à gauche */
+function neckSVG(scale, tuning) {
+  const nS = tuning.midi.length;
+  const pcs = new Map();
+  scale.intervals.forEach(iv => pcs.set((state.root + iv) % 12, iv));
+
+  const big = state.big;
+  const fw = big ? 56 : 46;           // largeur d'une case
+  const sh = big ? 34 : 27;           // écart entre cordes
+  const dotR = big ? 12 : 9.6;
+  const openZone = fw * 0.75;
+  const TOPn = 14, BOTn = 24, LEFTn = 8;
+  const N = state.maxFret;
+  const x0 = LEFTn + openZone;        // position du sillet
+  const W = x0 + N * fw + 12;
+  const H = TOPn + (nS - 1) * sh + BOTn;
+  const sy = s => TOPn + (nS - 1 - s) * sh;   // corde 0 (grave) en bas
+  const fx = f => x0 + f * fw;
+
+  const s2 = ['<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img">'];
+
+  // touche
+  s2.push('<rect x="' + x0 + '" y="' + (TOPn - 8) + '" width="' + (N * fw) +
+    '" height="' + ((nS - 1) * sh + 16) + '" rx="4" fill="' + DIAG.board + '"/>');
+
+  // repères
+  const INLAYS = [3, 5, 7, 9, 15, 17, 19];
+  const midY = TOPn + (nS - 1) * sh / 2;
+  for (let f = 1; f <= N; f++) {
+    const cx = fx(f) - fw / 2;
+    if (f === 12) {
+      s2.push('<circle cx="' + cx + '" cy="' + (midY - sh) + '" r="4" fill="' + DIAG.inlay + '"/>',
+              '<circle cx="' + cx + '" cy="' + (midY + sh) + '" r="4" fill="' + DIAG.inlay + '"/>');
+    } else if (INLAYS.includes(f)) {
+      s2.push('<circle cx="' + cx + '" cy="' + midY + '" r="4" fill="' + DIAG.inlay + '"/>');
+    }
+  }
+
+  // frettes + numéros
+  for (let f = 1; f <= N; f++) {
+    s2.push('<rect x="' + (fx(f) - 1) + '" y="' + (TOPn - 8) + '" width="2" height="' +
+      ((nS - 1) * sh + 16) + '" rx="1" fill="' + DIAG.fret + '"/>');
+    if ([3, 5, 7, 9, 12, 15, 17, 19].includes(f)) {
+      s2.push('<text x="' + (fx(f) - fw / 2) + '" y="' + (H - 6) + '" text-anchor="middle"' +
+        ' font-family="ui-monospace,Menlo,monospace" font-size="' + (big ? 13 : 11) + '"' +
+        ' fill="' + DIAG.num + '">' + f + '</text>');
+    }
+  }
+  // sillet
+  s2.push('<rect x="' + (x0 - 4) + '" y="' + (TOPn - 8) + '" width="5" height="' +
+    ((nS - 1) * sh + 16) + '" rx="2" fill="' + DIAG.nut + '"/>');
+
+  // cordes
+  for (let s = 0; s < nS; s++) {
+    const w = 2.4 - 1.5 * (s / (nS - 1));
+    s2.push('<rect x="' + LEFTn + '" y="' + (sy(s) - w / 2) + '" width="' + (W - LEFTn - 8) +
+      '" height="' + w + '" fill="' + DIAG.string + '"/>');
+  }
+
+  // notes de la gamme (case 0 = corde à vide, dans la zone avant le sillet)
+  for (let s = 0; s < nS; s++) {
+    for (let f = 0; f <= N; f++) {
+      const midi = tuning.midi[s] + f;
+      const pc = midi % 12;
+      if (!pcs.has(pc)) continue;
+      const iv = pcs.get(pc);
+      const label = state.labels === 'notes' ? NOTE_NAMES[pc] : SCALE_LABELS[iv];
+      const [bg, fg] = toneColor(iv, pc);
+      const cx = f === 0 ? LEFTn + openZone / 2 - 2 : fx(f) - fw / 2;
+      const cy = sy(s);
+      let fs = label.length > 1 ? 8.6 : 10;
+      if (big) fs += 2.2;
+      s2.push('<g class="ndot" data-midi="' + midi + '" style="cursor:pointer">');
+      if (f === 0) {
+        s2.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + (dotR - 1.4) + '" fill="' + DIAG.openBg +
+          '" stroke="' + bg + '" stroke-width="2.4"/>');
+        s2.push('<text x="' + cx + '" y="' + (cy + fs * .36) + '" text-anchor="middle" font-size="' + (fs - 1) +
+          '" font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="' + bg + '">' + label + '</text>');
+      } else {
+        s2.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + dotR + '" fill="' + bg +
+          '" stroke="' + (iv === 0 ? DIAG.nut : DIAG.dotStroke) + '" stroke-width="' + (iv === 0 ? 2 : 1) + '"/>');
+        s2.push('<text x="' + cx + '" y="' + (cy + fs * .36) + '" text-anchor="middle" font-size="' + fs +
+          '" font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="' + fg + '">' + label + '</text>');
+      }
+      s2.push('</g>');
+    }
+  }
+
+  s2.push('</svg>');
+  return s2.join('');
+}
+
+/* ============================================================
    Diagrammes SVG — façon touche palissandre
    ============================================================ */
 const NROWS = 4;
@@ -608,6 +882,19 @@ function playVoicing(v, tuning) {
   } catch (e) { /* audio indisponible : silencieux */ }
 }
 
+function playMidi(midi) {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const src = actx.createBufferSource();
+    src.buffer = pluckBuffer(midi);
+    const g = actx.createGain();
+    g.gain.value = 0.3;
+    src.connect(g); g.connect(actx.destination);
+    src.start(actx.currentTime + 0.01);
+  } catch (e) {}
+}
+
 function onCardTap(e) {
   const card = e.target.closest('.card');
   if (!card) return;
@@ -619,9 +906,17 @@ function onCardTap(e) {
    Démarrage + PWA
    ============================================================ */
 buildControls();
+$('neckWrap').addEventListener('click', e => {
+  const g = e.target.closest('.ndot');
+  if (g) playMidi(+g.dataset.midi);
+});
 applyBig();
 applyTheme(false);
-refresh();
+document.documentElement.dataset.tool = state.tool;
+$('tabChords').setAttribute('aria-pressed', String(state.tool === 'chords'));
+$('tabScales').setAttribute('aria-pressed', String(state.tool === 'scales'));
+refreshCurrent();
+if (state.tool === 'scales') refresh();   // pré-rendu de l'outil accords en arrière-plan
 
 if ('serviceWorker' in navigator) {
   try { navigator.serviceWorker.register('sw.js'); } catch (e) {}

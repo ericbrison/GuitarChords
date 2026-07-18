@@ -31,6 +31,29 @@ const CHORD_TYPES = [
   { id:'maj9',  sym:'M9',    label:'Majeur 9',      intervals:[0,2,4,7,11], opt:[7] },
 ];
 
+/* libellés de degrés pour les gammes (2 plutôt que 9, ♭6 plutôt que ♯5) */
+const SCALE_LABELS = {
+  0:'1', 1:'\u266d2', 2:'2', 3:'\u266d3', 4:'3', 5:'4',
+  6:'\u266d5', 7:'5', 8:'\u266d6', 9:'6', 10:'\u266d7', 11:'7'
+};
+
+const SCALES = [
+  { id:'penta-maj', label:'Pentatonique majeure',        intervals:[0,2,4,7,9] },
+  { id:'penta-min', label:'Pentatonique mineure',        intervals:[0,3,5,7,10] },
+  { id:'blues',     label:'Blues (penta min + \u266d5)', intervals:[0,3,5,6,7,10] },
+  { id:'blues-maj', label:'Blues majeure',               intervals:[0,2,3,4,7,9] },
+  { id:'major',     label:'Majeure (ionien)',            intervals:[0,2,4,5,7,9,11] },
+  { id:'minor',     label:'Mineure naturelle (\u00e9olien)', intervals:[0,2,3,5,7,8,10] },
+  { id:'harm-min',  label:'Mineure harmonique',          intervals:[0,2,3,5,7,8,11] },
+  { id:'mel-min',   label:'Mineure m\u00e9lodique',     intervals:[0,2,3,5,7,9,11] },
+  { id:'dorian',    label:'Dorien',                      intervals:[0,2,3,5,7,9,10] },
+  { id:'phrygian',  label:'Phrygien',                    intervals:[0,1,3,5,7,8,10] },
+  { id:'lydian',    label:'Lydien',                      intervals:[0,2,4,6,7,9,11] },
+  { id:'mixo',      label:'Mixolydien',                  intervals:[0,2,4,5,7,9,10] },
+  { id:'locrian',   label:'Locrien',                     intervals:[0,1,3,5,6,8,10] },
+  { id:'whole',     label:'Tons entiers',                intervals:[0,2,4,6,8,10] },
+];
+
 /* midi des cordes à vide, de la plus grave à la plus aiguë */
 const TUNINGS = [
   { id:'guitar-std',  label:'Guitare — standard (EADGBE)', midi:[40,45,50,55,59,64] },
@@ -295,5 +318,5 @@ function parseChord(input) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { NOTE_NAMES, INTERVAL_LABELS, CHORD_TYPES, TUNINGS, findVoicings, parseChord, MUTE };
+  module.exports = { NOTE_NAMES, INTERVAL_LABELS, SCALE_LABELS, SCALES, CHORD_TYPES, TUNINGS, findVoicings, parseChord, MUTE };
 }

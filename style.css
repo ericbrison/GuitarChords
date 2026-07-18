@@ -449,3 +449,92 @@ footer.app {
 :root[data-big="1"] .badge { font-size: 13px; }
 :root[data-big="1"] .fretbar-info { font-size: 15px; }
 :root[data-big="1"] .free-msg { font-size: 14.5px; }
+
+
+/* ============ Onglets outils ============ */
+.tools {
+  display: flex;
+  gap: 8px;
+  padding: 2px 16px 8px;
+}
+.tools button {
+  flex: 1;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font: 15px var(--font-body);
+  cursor: pointer;
+}
+.tools button[aria-pressed="true"] {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: #221A0C;
+  font-weight: 700;
+}
+@media (min-width: 820px) { .tools { max-width: 1080px; margin: 0 auto; } }
+
+/* masquage croisé des outils */
+:root[data-tool="scales"] .controls,
+:root[data-tool="scales"] .fretbar-wrap,
+:root[data-tool="scales"] .chord-banner.chords,
+:root[data-tool="scales"] #results,
+:root[data-tool="scales"] .more-wrap { display: none; }
+:root[data-tool="chords"] #toolScales { display: none; }
+
+/* ============ Outil gammes ============ */
+#toolScales .selects { padding-top: 4px; }
+.ivchips {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  padding: 10px 16px 0;
+}
+@media (min-width: 560px) { .ivchips { grid-template-columns: repeat(12, 1fr); } }
+.ivchip {
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-data);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+}
+.ivchip b { font-size: 14px; }
+.ivchip small { font-size: 10.5px; opacity: .8; }
+.ivchip[aria-pressed="true"] {
+  color: var(--chipfg);
+  background: var(--chipbg);
+  border-color: var(--chipbg);
+  font-weight: 700;
+}
+.ivchip:disabled { cursor: default; }
+.ivchip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+.neck-wrap {
+  margin: 6px 0 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px;
+}
+.neck-wrap svg { display: block; }
+.neck-hint {
+  padding: 6px 18px 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+@media (min-width: 820px) {
+  #toolScales .selects, .ivchips, #toolScales .freechord, #toolScales .free-msg,
+  #toolScales .chord-banner, .neck-wrap, .neck-hint { max-width: 1080px; margin-left: auto; margin-right: auto; }
+}
+:root[data-big="1"] .ivchip b { font-size: 17px; }
+:root[data-big="1"] .ivchip small { font-size: 12.5px; }
+:root[data-big="1"] .ivchip { height: 60px; }
