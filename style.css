@@ -593,3 +593,24 @@ footer.app {
   font-size: 14px;
 }
 select:disabled { opacity: .45; }
+
+
+/* ligne d'accord : fondamentale · type · / · basse */
+.chord-line select#rootSel,
+.chord-line select#optBass {
+  flex: 0 0 auto;
+  width: 4.6em;
+}
+.chord-line select#chordType {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.slash-sep {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--muted);
+  padding: 0 1px;
+}

@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v24">
+<link rel="stylesheet" href="style.css?v25">
 </head>
 <body>
 
@@ -86,12 +86,10 @@
 </div>
 
 <div class="controls">
-  <div class="selects">
+  <div class="selects chord-line">
     <select id="rootSel" aria-label="Fondamentale"></select>
     <select id="chordType" aria-label="Type d’accord"></select>
-  </div>
-  <div class="selects">
-    <label class="inline-label" for="optBass">Basse</label>
+    <span class="slash-sep" aria-hidden="true">/</span>
     <select id="optBass" aria-label="Note à la basse"></select>
   </div>
   <div class="freechord">
@@ -170,7 +168,7 @@
 
 <footer class="app">Touchez un diagramme pour l’entendre · fonctionne hors-ligne · <span id="appVersion"></span></footer>
 
-<script src="engine.js?v24"></script>
-<script src="app.js?v24"></script>
+<script src="engine.js?v25"></script>
+<script src="app.js?v25"></script>
 </body>
 </html>
