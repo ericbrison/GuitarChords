@@ -5,8 +5,8 @@ const state = {
   root: 0,
   type: 'maj7',
   tuning: 'guitar-std',
-  bass: 0,              // intervalle à la basse (0 = fondamentale)
-  inv: false,           // renversements : basse libre, le sélecteur est ignoré
+  bass: null,           // basse imposée (intervalle) ; null = rien d'imposé
+  inv: false,           // renversements : basse libre quand rien n'est imposé
   theme: 'auto',
   big: false,           // mode basse vision : une colonne, éléments agrandis
   fretMin: null,        // filtre de position : plage de cases [fretMin, fretMax]
@@ -22,7 +22,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
@@ -192,7 +192,7 @@ try {
 function pushHash() {
   try {
     const p = { r: state.root, t: state.type, a: state.tuning };
-    if (!state.inv && state.bass !== 0) p.b = state.bass;
+    if (state.bass != null) p.b = state.bass;
     if (state.inv) p.i = '1';
     if (state.fretMin != null) { p.fm = state.fretMin; p.fx = state.fretMax; }
     if (state.type === 'custom' || state.type.startsWith('saved:')) {
@@ -223,7 +223,7 @@ function buildControls() {
   $('chordType').addEventListener('change', e => {
     state.type = e.target.value;
     const c = currentChord();
-    state.bass = c.bassIv != null ? c.bassIv : 0;
+    state.bass = c.bassIv != null ? c.bassIv : null;
     refresh();
   });
 
@@ -271,7 +271,7 @@ function buildControls() {
     applyTheme(true);
   });
   $('optBass').addEventListener('change', e => {
-    state.bass = +e.target.value;
+    state.bass = e.target.value === '' ? null : +e.target.value;
     refresh();
   });
   $('optOmit5').checked = state.omit5;
@@ -380,7 +380,7 @@ function applyFreeChord() {
     state.custom = p;
     state.root = p.rootPc;
     state.type = 'custom';
-    state.bass = p.bassIv != null ? p.bassIv : 0;
+    state.bass = p.bassIv != null ? p.bassIv : null;
     rebuildTypeSelect();
     freeMsg('');
     refresh();
@@ -464,11 +464,11 @@ function clearFretFilter() {
 function rebuildBassSelect(chord) {
   const sel = $('optBass');
   sel.innerHTML = '';
+  sel.add(new Option('—', ''));   // rien d'imposé
   for (let iv = 0; iv < 12; iv++) {
     sel.add(new Option(NOTE_NAMES[(state.root + iv) % 12], String(iv)));
   }
-  sel.value = String(state.bass);
-  sel.disabled = state.inv;   // renversements : la basse est libre
+  sel.value = state.bass == null ? '' : String(state.bass);
 }
 
 /* --- recalcul --- */
@@ -478,7 +478,7 @@ function refresh() {
 
   $('rootSel').value = String(state.root);
   rebuildBassSelect(chord);
-  const bassIv = state.inv ? null : state.bass;
+  const bassIv = state.bass != null ? state.bass : (state.inv ? null : 0);
 
   curPcs = new Map();
   chord.intervals.forEach(iv => curPcs.set((state.root + iv) % 12, iv));
