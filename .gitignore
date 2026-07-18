@@ -1,0 +1,5 @@
+# rien de généré à ignorer pour l'instant ;
+# réservé aux futurs outils (node_modules, dist, etc.)
+node_modules/
+dist/
+*.log
