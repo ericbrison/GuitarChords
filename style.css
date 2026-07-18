@@ -521,11 +521,16 @@ footer.app {
 .ivchip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 .neck-wrap {
-  margin: 6px 0 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 16px;
+  margin: 6px 16px 0;
+  overflow: hidden;
+  position: relative;
 }
+.neck-canvas {
+  transform-origin: 0 0;
+  will-change: transform;
+  width: max-content;
+}
+.neck-wrap.zoomed { cursor: grab; }
 .neck-wrap svg { display: block; }
 .neck-hint {
   padding: 6px 18px 0;
@@ -542,5 +547,3 @@ footer.app {
 :root[data-big="1"] .ivchip { height: 60px; }
 
 
-/* manche vertical : centré, la page défile naturellement */
-.neck-wrap svg { margin: 0 auto; }

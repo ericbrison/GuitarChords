@@ -19,7 +19,7 @@ const state = {
   maxFret: 15,
 };
 
-const APP_VERSION = 'v13';
+const APP_VERSION = 'v14';
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
@@ -633,9 +633,127 @@ function refreshScales() {
   $('scaleName').value = state.scale.startsWith('savedscale:') ? sc.name
     : state.scale === 'custom' ? (sc.name || '') : '';
 
-  $('neckWrap').innerHTML = neckSVG(sc, tuning);
+  $('neckCanvas').innerHTML = neckSVG(sc, tuning);
+  fitNeckFrame();
+  clampNeck();
+  applyNeckTransform();
   renderSavedScalesList();
   pushHash();
+}
+
+/* --- pinch-to-zoom du manche ---
+   Pincement à deux doigts (centré sur le geste), déplacement au doigt
+   une fois zoomé, double-tap pour basculer, Ctrl+molette sur desktop.
+   À l'échelle 1, touch-action pan-y laisse la page défiler. */
+const neckZ = { k: 1, tx: 0, ty: 0 };
+let neckDragged = false;
+const neckPtrs = new Map();
+let pinch0 = null, lastTap = { t: 0, x: 0, y: 0 };
+
+function neckBase() {
+  const svg = $('neckCanvas').querySelector('svg');
+  return svg ? { w: +svg.getAttribute('width'), h: +svg.getAttribute('height') } : null;
+}
+
+function fitNeckFrame() {
+  const b = neckBase();
+  if (b) $('neckWrap').style.height = b.h + 'px';
+}
+
+function clampNeck() {
+  const b = neckBase();
+  if (!b) return;
+  const vw = $('neckWrap').clientWidth || b.w, vh = b.h;
+  neckZ.k = Math.min(4, Math.max(1, neckZ.k));
+  const cw = b.w * neckZ.k, ch = b.h * neckZ.k;
+  neckZ.tx = cw <= vw ? (vw - cw) / 2 : Math.min(0, Math.max(vw - cw, neckZ.tx));
+  neckZ.ty = ch <= vh ? 0 : Math.min(0, Math.max(vh - ch, neckZ.ty));
+}
+
+function applyNeckTransform() {
+  const cv = $('neckCanvas');
+  cv.style.transform = 'translate(' + neckZ.tx + 'px,' + neckZ.ty + 'px) scale(' + neckZ.k + ')';
+  cv.style.touchAction = neckZ.k > 1.01 ? 'none' : 'pan-y';
+  $('neckWrap').classList.toggle('zoomed', neckZ.k > 1.01);
+}
+
+function neckZoomTo(k, px, py) {
+  // conserve le point (px,py) du cadre sous le doigt
+  const cx = (px - neckZ.tx) / neckZ.k, cy = (py - neckZ.ty) / neckZ.k;
+  neckZ.k = k;
+  neckZ.tx = px - cx * neckZ.k;
+  neckZ.ty = py - cy * neckZ.k;
+  clampNeck();
+  applyNeckTransform();
+}
+
+function neckPointerDown(e) {
+  neckPtrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  neckDragged = false;
+  if (neckPtrs.size === 2) {
+    const [a, b] = [...neckPtrs.values()];
+    pinch0 = {
+      d: Math.hypot(a.x - b.x, a.y - b.y),
+      k: neckZ.k, tx: neckZ.tx, ty: neckZ.ty,
+      mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
+    };
+  }
+}
+
+function neckPointerMove(e) {
+  const p = neckPtrs.get(e.pointerId);
+  if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+
+  if (neckPtrs.size === 2 && pinch0) {
+    p.x = e.clientX; p.y = e.clientY;
+    const [a, b] = [...neckPtrs.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    const rect = $('neckWrap').getBoundingClientRect();
+    const mx = (a.x + b.x) / 2 - rect.left, my = (a.y + b.y) / 2 - rect.top;
+    const k = Math.min(4, Math.max(1, pinch0.k * d / (pinch0.d || 1)));
+    const cx = (pinch0.mx - rect.left - pinch0.tx) / pinch0.k;
+    const cy = (pinch0.my - rect.top - pinch0.ty) / pinch0.k;
+    neckZ.k = k;
+    neckZ.tx = mx - cx * k;
+    neckZ.ty = my - cy * k;
+    clampNeck(); applyNeckTransform();
+    neckDragged = true;
+    return;
+  }
+
+  if (neckPtrs.size === 1 && (Math.abs(dx) > 6 || Math.abs(dy) > 6 || neckDragged)) {
+    p.x = e.clientX; p.y = e.clientY;
+    neckZ.tx += dx;
+    if (neckZ.k > 1.01) neckZ.ty += dy;
+    clampNeck(); applyNeckTransform();
+    neckDragged = true;
+    try { $('neckWrap').setPointerCapture(e.pointerId); } catch (err) {}
+  }
+}
+
+function neckPointerUp(e) {
+  neckPtrs.delete(e.pointerId);
+  if (neckPtrs.size < 2) pinch0 = null;
+  if (!neckDragged && e.type === 'pointerup') {
+    const now = Date.now();
+    if (now - lastTap.t < 300 &&
+        Math.abs(e.clientX - lastTap.x) < 25 && Math.abs(e.clientY - lastTap.y) < 25) {
+      const rect = $('neckWrap').getBoundingClientRect();
+      neckZoomTo(neckZ.k > 1.01 ? 1 : 2.2, e.clientX - rect.left, e.clientY - rect.top);
+      lastTap.t = 0;
+      return;
+    }
+    lastTap = { t: now, x: e.clientX, y: e.clientY };
+  }
+}
+
+function neckWheel(e) {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  const rect = $('neckWrap').getBoundingClientRect();
+  neckZoomTo(Math.min(4, Math.max(1, neckZ.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15))),
+    e.clientX - rect.left, e.clientY - rect.top);
 }
 
 /* manche complet, quatre orientations.
@@ -932,9 +1050,15 @@ function onCardTap(e) {
 document.getElementById('appVersion').textContent = APP_VERSION;
 buildControls();
 $('neckWrap').addEventListener('click', e => {
+  if (neckDragged) return;
   const g = e.target.closest('.ndot');
   if (g) playMidi(+g.dataset.midi);
 });
+$('neckWrap').addEventListener('pointerdown', neckPointerDown);
+$('neckWrap').addEventListener('pointermove', neckPointerMove);
+$('neckWrap').addEventListener('pointerup', neckPointerUp);
+$('neckWrap').addEventListener('pointercancel', neckPointerUp);
+$('neckWrap').addEventListener('wheel', neckWheel, { passive: false });
 applyBig();
 applyTheme(false);
 document.documentElement.dataset.tool = state.tool;
