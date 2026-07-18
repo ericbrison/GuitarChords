@@ -522,17 +522,9 @@ footer.app {
 
 .neck-wrap {
   margin: 6px 16px 0;
-  /* sans zoom : seul l'axe du manche défile ici, la page garde le vertical
-     (pas d'overscroll-contain : les gestes non captés remontent à la page) */
+  /* seul l'axe du manche défile ici (natif) ; la page garde tout le reste */
   overflow-x: auto;
   overflow-y: hidden;
-  position: relative;
-  touch-action: pan-x pan-y;   /* 2 doigts = pincement (géré par l'app) */
-}
-.neck-wrap.zoomed {
-  overflow: auto;              /* zoomé : le manche défile dans les deux axes */
-  outline: 1.5px solid var(--brass-deep);
-  border-radius: 10px;
 }
 .neck-canvas { width: max-content; margin: 0 auto; }
 .neck-wrap.zoomed { cursor: grab; }
@@ -556,3 +548,32 @@ footer.app {
 
 .neck-opts { padding-top: 10px; }
 @media (min-width: 820px) { .neck-opts { max-width: 1080px; margin-left: auto; margin-right: auto; } }
+
+
+.neck-zoom {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  height: 44px;
+  padding: 0 4px;
+}
+.neck-zoom button {
+  width: 40px; height: 36px;
+  border: none; background: none;
+  color: var(--brass);
+  font-size: 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.neck-zoom button:disabled { color: var(--line); cursor: default; }
+.neck-zoom button:active:not(:disabled) { background: var(--raise); }
+.neck-zoom span[id] {
+  min-width: 46px;
+  text-align: center;
+  font: 12.5px var(--font-data);
+  color: var(--muted);
+}

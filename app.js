@@ -15,12 +15,13 @@ const state = {
   scaleCustom: null,    // { name, intervals } pour la gamme libre
   neckView: 'h-left',   // orientation du manche : h-left | h-right | v-top | v-bottom
   scaleMaxFret: 22,     // nombre de cases du manche des gammes (indépendant des accords)
+  neckZoom: 1,          // agrandissement du manche par re-rendu (pas de zoom gestuel)
   omit5: true,
   labels: 'intervals',
   maxFret: 22,
 };
 
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
@@ -98,6 +99,8 @@ try {
   if (['h-left', 'h-right', 'v-top', 'v-bottom'].includes(nv)) state.neckView = nv;
   const sf = +localStorage.getItem('guitarchords.scalefrets');
   if ([15, 19, 22, 24].includes(sf)) state.scaleMaxFret = sf;
+  const nz = +localStorage.getItem('guitarchords.neckzoom');
+  if (nz >= 1 && nz <= 3) state.neckZoom = nz;
 } catch (e) {}
 function persistSaved() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(savedChords)); return true; }
@@ -645,118 +648,30 @@ function refreshScales() {
     : state.scale === 'custom' ? (sc.name || '') : '';
 
   $('neckCanvas').innerHTML = neckSVG(sc, tuning);
-  fitNeckFrame();
-  applyNeckScale();
+  updateNeckZoomUI();
   renderSavedScalesList();
   pushHash();
 }
 
-/* --- pinch-to-zoom du manche ---
-   Le zoom redimensionne le SVG (vectoriel, net à toute échelle) et le
-   déplacement passe par le défilement natif du conteneur : pas de calque
-   transformé géant (tronqué par la limite de texture GPU des mobiles).
-   touch-action pan-x pan-y : un doigt = scroll natif, deux doigts = pincement. */
-const neckZ = { k: 1 };
-let neckDragged = false;
-const neckPtrs = new Map();
-let pinch0 = null, lastTap = { t: 0, x: 0, y: 0 };
+/* --- agrandissement du manche par re-rendu ---
+   Les boutons − / + redessinent le manche avec des cases, pastilles et
+   textes plus grands (SVG vectoriel : net à tous les niveaux). Aucun zoom
+   gestuel : le défilement, natif, ne concerne que l'axe du manche. */
+const NECK_ZOOMS = [1, 1.25, 1.5, 1.75, 2, 2.5, 3];
 
-function neckBase() {
-  const svg = $('neckCanvas').querySelector('svg');
-  return svg ? { svg, w: +svg.getAttribute('width'), h: +svg.getAttribute('height') } : null;
+function neckZoomStep(dir) {
+  const i = NECK_ZOOMS.indexOf(state.neckZoom);
+  const j = Math.min(NECK_ZOOMS.length - 1, Math.max(0, (i < 0 ? 0 : i) + dir));
+  if (NECK_ZOOMS[j] === state.neckZoom) return;
+  state.neckZoom = NECK_ZOOMS[j];
+  try { localStorage.setItem('guitarchords.neckzoom', String(state.neckZoom)); } catch (e) {}
+  refreshScales();
 }
 
-function fitNeckFrame() {
-  const b = neckBase();
-  if (b) $('neckWrap').style.height = b.h + 'px';
-}
-
-function applyNeckScale() {
-  const b = neckBase();
-  if (!b) return;
-  b.svg.style.width = (b.w * neckZ.k) + 'px';
-  b.svg.style.height = (b.h * neckZ.k) + 'px';
-  $('neckWrap').classList.toggle('zoomed', neckZ.k > 1.01);
-}
-
-function neckZoomTo(k, ax, ay) {
-  const wrap = $('neckWrap');
-  const k0 = neckZ.k;
-  neckZ.k = Math.min(4, Math.max(1, k));
-  const rx = (wrap.scrollLeft + ax) / k0, ry = (wrap.scrollTop + ay) / k0;
-  applyNeckScale();
-  wrap.scrollLeft = rx * neckZ.k - ax;   // le point visé reste sous le doigt
-  wrap.scrollTop = ry * neckZ.k - ay;
-}
-
-function neckPointerDown(e) {
-  neckPtrs.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
-  neckDragged = false;
-  if (neckPtrs.size === 2) {
-    const wrap = $('neckWrap'), rect = wrap.getBoundingClientRect();
-    const [a, b] = [...neckPtrs.values()];
-    pinch0 = {
-      d: Math.hypot(a.x - b.x, a.y - b.y) || 1,
-      k: neckZ.k,
-      rx: (wrap.scrollLeft + (a.x + b.x) / 2 - rect.left) / neckZ.k,
-      ry: (wrap.scrollTop + (a.y + b.y) / 2 - rect.top) / neckZ.k,
-    };
-  }
-}
-
-function neckPointerMove(e) {
-  const p = neckPtrs.get(e.pointerId);
-  if (!p) return;
-  const dx = e.clientX - p.x, dy = e.clientY - p.y;
-
-  if (neckPtrs.size === 2 && pinch0) {
-    p.x = e.clientX; p.y = e.clientY;
-    const wrap = $('neckWrap'), rect = wrap.getBoundingClientRect();
-    const [a, b] = [...neckPtrs.values()];
-    const mx = (a.x + b.x) / 2 - rect.left, my = (a.y + b.y) / 2 - rect.top;
-    neckZ.k = Math.min(4, Math.max(1, pinch0.k * Math.hypot(a.x - b.x, a.y - b.y) / pinch0.d));
-    applyNeckScale();
-    wrap.scrollLeft = pinch0.rx * neckZ.k - mx;
-    wrap.scrollTop = pinch0.ry * neckZ.k - my;
-    neckDragged = true;
-    e.preventDefault();
-    return;
-  }
-
-  // à la souris, glisser déplace la vue (au doigt, le scroll natif s'en charge)
-  if (neckPtrs.size === 1 && p.type === 'mouse' &&
-      (neckDragged || Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
-    p.x = e.clientX; p.y = e.clientY;
-    const wrap = $('neckWrap');
-    wrap.scrollLeft -= dx;
-    wrap.scrollTop -= dy;
-    neckDragged = true;
-    try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
-  }
-}
-
-function neckPointerUp(e) {
-  neckPtrs.delete(e.pointerId);
-  if (neckPtrs.size < 2) pinch0 = null;
-  if (!neckDragged && e.type === 'pointerup') {
-    const now = Date.now();
-    if (now - lastTap.t < 300 &&
-        Math.abs(e.clientX - lastTap.x) < 25 && Math.abs(e.clientY - lastTap.y) < 25) {
-      const rect = $('neckWrap').getBoundingClientRect();
-      neckZoomTo(neckZ.k > 1.01 ? 1 : 2.2, e.clientX - rect.left, e.clientY - rect.top);
-      lastTap.t = 0;
-      return;
-    }
-    lastTap = { t: now, x: e.clientX, y: e.clientY };
-  }
-}
-
-function neckWheel(e) {
-  if (!e.ctrlKey) return;
-  e.preventDefault();
-  const rect = $('neckWrap').getBoundingClientRect();
-  neckZoomTo(Math.min(4, Math.max(1, neckZ.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15))),
-    e.clientX - rect.left, e.clientY - rect.top);
+function updateNeckZoomUI() {
+  $('neckZoomLabel').textContent = Math.round(state.neckZoom * 100) + '\u202f%';
+  $('neckZoomOut').disabled = state.neckZoom <= NECK_ZOOMS[0];
+  $('neckZoomIn').disabled = state.neckZoom >= NECK_ZOOMS[NECK_ZOOMS.length - 1];
 }
 
 /* manche complet, quatre orientations.
@@ -771,17 +686,18 @@ function neckSVG(scale, tuning) {
   const big = state.big;
   const vert = state.neckView.startsWith('v');
   const flip = state.neckView === 'h-right' || state.neckView === 'v-bottom';
-  const fw = big ? 56 : 46;
-  const sh = big ? 34 : 27;
-  const dotR = big ? 12 : 9.6;
+  const z = state.neckZoom;
+  const fw = (big ? 56 : 46) * z;
+  const sh = (big ? 34 : 27) * z;
+  const dotR = (big ? 12 : 9.6) * z;
   const openZone = fw * 0.75;
   const N = state.scaleMaxFret;
 
   const x0 = 8 + openZone;                 // position du sillet sur L
   const Llen = x0 + N * fw + 12;
-  const Tfirst = vert ? 34 : 14;           // couloir des numéros : à gauche (vertical) / en bas (horizontal)
+  const Tfirst = (vert ? 34 : 14) * z;           // couloir des numéros : à gauche (vertical) / en bas (horizontal)
   const Tlast = Tfirst + (nS - 1) * sh;
-  const Tlen = Tlast + (vert ? 14 : 26);
+  const Tlen = Tlast + (vert ? 14 : 26) * z;
 
   const W = vert ? Tlen : Llen, H = vert ? Llen : Tlen;
   const P = (L, T) => vert ? [T, flip ? H - L : L] : [flip ? W - L : L, T];
@@ -804,20 +720,20 @@ function neckSVG(scale, tuning) {
   const INLAYS = [3, 5, 7, 9, 15, 17, 19, 21];
   const midT = (Tfirst + Tlast) / 2;
   const dotAt = (L, T) => { const [x, y] = P(L, T);
-    return '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + DIAG.inlay + '"/>'; };
+    return '<circle cx="' + x + '" cy="' + y + '" r="' + 4 * z + '" fill="' + DIAG.inlay + '"/>'; };
   for (let f = 1; f <= N; f++) {
     if (f === 12) s2.push(dotAt(caseL(f), midT - sh), dotAt(caseL(f), midT + sh));
     else if (INLAYS.includes(f)) s2.push(dotAt(caseL(f), midT));
   }
 
   // frettes + numéros
-  const numT = vert ? Tfirst - 22 : Tlast + 22;
+  const numT = vert ? Tfirst - 22 * z : Tlast + 22 * z;
   for (let f = 1; f <= N; f++) {
     s2.push(rectP(x0 + f * fw - 1, x0 + f * fw + 1, Tfirst - 8, Tlast + 8, 1, DIAG.fret));
     if ([3, 5, 7, 9, 12, 15, 17, 19, 21].includes(f)) {
       const [x, y] = P(caseL(f), numT);
-      s2.push('<text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle"' +
-        ' font-family="ui-monospace,Menlo,monospace" font-size="' + (big ? 13 : 11) + '"' +
+      s2.push('<text x="' + x + '" y="' + (y + 4 * z) + '" text-anchor="middle"' +
+        ' font-family="ui-monospace,Menlo,monospace" font-size="' + (big ? 13 : 11) * z + '"' +
         ' fill="' + DIAG.num + '">' + f + '</text>');
     }
   }
@@ -841,8 +757,8 @@ function neckSVG(scale, tuning) {
       const [bg, fg] = toneColor(iv, pc);
       const L = f === 0 ? 8 + openZone / 2 - 2 : caseL(f);
       const [cx, cy] = P(L, t(s));
-      let fs = label.length > 1 ? 8.6 : 10;
-      if (big) fs += 2.2;
+      let fs = (label.length > 1 ? 8.6 : 10) * z;
+      if (big) fs += 2.2 * z;
       s2.push('<g class="ndot" data-midi="' + midi + '" style="cursor:pointer">');
       if (f === 0) {
         s2.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + (dotR - 1.4) + '" fill="' + DIAG.openBg +
@@ -1053,15 +969,11 @@ function onCardTap(e) {
 document.getElementById('appVersion').textContent = APP_VERSION;
 buildControls();
 $('neckWrap').addEventListener('click', e => {
-  if (neckDragged) return;
   const g = e.target.closest('.ndot');
   if (g) playMidi(+g.dataset.midi);
 });
-$('neckWrap').addEventListener('pointerdown', neckPointerDown);
-$('neckWrap').addEventListener('pointermove', neckPointerMove);
-$('neckWrap').addEventListener('pointerup', neckPointerUp);
-$('neckWrap').addEventListener('pointercancel', neckPointerUp);
-$('neckWrap').addEventListener('wheel', neckWheel, { passive: false });
+$('neckZoomIn').addEventListener('click', () => neckZoomStep(1));
+$('neckZoomOut').addEventListener('click', () => neckZoomStep(-1));
 applyBig();
 applyTheme(false);
 document.documentElement.dataset.tool = state.tool;

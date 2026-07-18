@@ -84,9 +84,10 @@ extensibles dans `TUNINGS` (midi des cordes à vide, grave → aigu).
 
 L'onglet « Gammes » affiche une gamme sur tout le manche (manche horizontal,
 défilement tactile, notes colorées par degré ou par note, toucher une note la
-joue). Pinch-to-zoom : pincer pour zoomer
-(jusqu'à ×4, centré sur le geste), glisser pour se déplacer, double-tap pour
-basculer zoom/vue entière, Ctrl+molette sur desktop. Quatre orientations dans ⚙ : horizontal sillet à gauche ou à droite
+joue). Agrandissement par boutons − / +
+(100 % à 300 %) : le manche est redessiné avec des cases, pastilles et textes
+plus grands ; le défilement, natif, ne concerne que l'axe du manche, la page
+gardant le défilement vertical. Quatre orientations dans ⚙ : horizontal sillet à gauche ou à droite
 (gauchers), vertical sillet en haut ou en bas (pratique en portrait, la page
 défile le long du manche). 14 gammes prédéfinies (pentatoniques, blues, modes, mineures
 harmonique/mélodique, tons entiers). Les 12 pastilles de degrés permettent de
