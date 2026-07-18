@@ -168,7 +168,8 @@ function buildControls() {
       state.fretMax = state.maxFret;
       if (state.fretMin > state.maxFret) state.fretMin = state.fretMax = null;
     }
-    buildFretbar();
+    syncSliderFromState();
+    buildFretSlider();
     refresh();
   });
 
@@ -186,8 +187,12 @@ function buildControls() {
     rebuildTypeSelect(); renderSavedList(); refresh();
   });
 
-  buildFretbar();
-  $('fretbar').addEventListener('click', onFretbarTap);
+  syncSliderFromState();
+  buildFretSlider();
+  for (const id of ['fretMinR', 'fretMaxR']) {
+    $(id).addEventListener('input', updateSliderUI);
+    $(id).addEventListener('change', commitSlider);
+  }
   $('fretbarClear').addEventListener('click', clearFretFilter);
 
   $('moreBtn').addEventListener('click', renderBatch);
@@ -262,64 +267,55 @@ function saveCurrentChord() {
   refresh();
 }
 
-/* --- ruban de sélection de position sur le manche ---
-   1 tap : position de 4 cases à partir de la case touchée.
-   2e tap : ajuste la fin de la plage. Bouton ✕ : tout le manche. */
-let fretAnchor = null;
-
-function buildFretbar() {
-  const bar = $('fretbar');
-  bar.innerHTML = '';
-  const PIPS = [3, 5, 7, 9, 12, 15, 17, 19];
-  for (let f = 1; f <= state.maxFret; f++) {
-    const b = document.createElement('button');
-    b.className = 'fret-cell';
-    b.dataset.fret = f;
-    b.innerHTML = f + (PIPS.includes(f) ? '<span class="pip' + (f === 12 ? ' d' : '') + '"></span>' : '');
-    b.setAttribute('aria-label', 'Case ' + f);
-    bar.appendChild(b);
-  }
-  updateFretbarUI();
+/* --- double slider de plage de cases ---
+   Plage complète (1..maxFret) = aucun filtre. Libellé mis à jour en
+   direct pendant le glissement, recalcul des positions au relâcher. */
+function sliderVals() {
+  let a = +$('fretMinR').value, z = +$('fretMaxR').value;
+  if (a > z) [a, z] = [z, a];
+  return [a, z];
 }
 
-function onFretbarTap(e) {
-  const cell = e.target.closest('.fret-cell');
-  if (!cell) return;
-  const f = +cell.dataset.fret;
-  if (fretAnchor == null) {
-    fretAnchor = f;
-    state.fretMin = f;
-    state.fretMax = Math.min(f + 3, state.maxFret);
-  } else {
-    state.fretMin = Math.min(fretAnchor, f);
-    state.fretMax = Math.max(fretAnchor, f);
-    fretAnchor = null;
-  }
+function buildFretSlider() {
+  const N = state.maxFret;
+  $('fretMinR').max = N; $('fretMaxR').max = N;
+  const marks = [1, 3, 5, 7, 9, 12, 15, 17, 19].filter(f => f <= N);
+  $('rangeScale').innerHTML = marks.map(f =>
+    '<span style="left:' + ((f - 1) / (N - 1) * 100) + '%">' +
+    (f === 12 ? '\u2022' + f + '\u2022' : f) + '</span>').join('');
+  updateSliderUI();
+}
+
+function syncSliderFromState() {
+  $('fretMinR').value = state.fretMin != null ? state.fretMin : 1;
+  $('fretMaxR').value = state.fretMax != null ? state.fretMax : state.maxFret;
+}
+
+function updateSliderUI() {
+  const N = state.maxFret;
+  const [a, z] = sliderVals();
+  const p = f => (f - 1) / (N - 1) * 100;
+  $('rangeFill').style.left = p(a) + '%';
+  $('rangeFill').style.width = (p(z) - p(a)) + '%';
+  const all = a === 1 && z === N;
+  $('fretbarClear').hidden = all;
+  $('fretbarLabel').textContent = all
+    ? 'Tout le manche (cases 1\u2013' + N + ')'
+    : 'Cases ' + a + '\u2013' + z;
+}
+
+function commitSlider() {
+  const N = state.maxFret;
+  const [a, z] = sliderVals();
+  if (a === 1 && z === N) { state.fretMin = state.fretMax = null; }
+  else { state.fretMin = a; state.fretMax = z; }
   refresh();
 }
 
 function clearFretFilter() {
-  fretAnchor = null;
   state.fretMin = state.fretMax = null;
+  syncSliderFromState();
   refresh();
-}
-
-function updateFretbarUI() {
-  const { fretMin: a, fretMax: z } = state;
-  document.querySelectorAll('.fret-cell').forEach(c => {
-    const f = +c.dataset.fret;
-    c.classList.toggle('sel', a != null && f >= a && f <= z);
-  });
-  $('fretbarClear').hidden = a == null;
-  $('fretbarLabel').textContent = a == null
-    ? 'Tout le manche — touchez une case pour choisir une position'
-    : 'Cases ' + a + '–' + z + (fretAnchor != null
-        ? ' — touchez une autre case pour ajuster la fin' : '');
-  // rendre la sélection visible dans le ruban
-  const first = document.querySelector('.fret-cell.sel');
-  if (first && first.scrollIntoView) {
-    try { first.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
-  }
 }
 
 function rebuildBassSelect(chord) {
@@ -364,7 +360,7 @@ function refresh() {
     voicings = voicings.filter(v => v.frets.every(f =>
       f === MUTE || (f === 0 ? a <= 1 : f >= a && f <= z)));
   }
-  updateFretbarUI();
+  updateSliderUI();
 
   const name = NOTE_NAMES[state.root];
   const slash = bassIv != null && bassIv !== 0

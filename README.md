@@ -94,11 +94,10 @@ l'appareil, survit hors-ligne). Gestion/suppression dans le panneau ⚙.
 
 ## Position sur le manche
 
-Le ruban de cases sous les contrôles filtre les positions : un tap sur une
-case sélectionne une position de 4 cases (case 5 → cases 5–8), un second tap
-ajuste la fin de la plage, ✕ revient au manche entier. Les cordes à vide ne
-sont admises que si la plage démarre au sillet. La plage est portée par
-l'URL (`#fm=5&fx=8`).
+Un double slider sous les contrôles filtre les positions par plage de cases
+(deux poignées min/max, graduation aux cases repères, ✕ pour revenir au
+manche entier). Les cordes à vide ne sont admises que si la plage démarre au
+sillet. La plage est portée par l'URL (`#fm=5&fx=8`).
 
 ## État partageable
 

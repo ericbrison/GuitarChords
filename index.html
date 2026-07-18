@@ -76,7 +76,14 @@
 </div>
 
 <div class="fretbar-wrap">
-  <div class="fretbar" id="fretbar" role="group" aria-label="Filtrer par position sur le manche"></div>
+  <div class="range2" id="range2">
+    <div class="range2-track"><div class="range2-fill" id="rangeFill"></div></div>
+    <input type="range" id="fretMinR" min="1" max="15" step="1" value="1"
+           aria-label="Première case de la plage">
+    <input type="range" id="fretMaxR" min="1" max="15" step="1" value="15"
+           aria-label="Dernière case de la plage">
+    <div class="range2-scale" id="rangeScale"></div>
+  </div>
   <div class="fretbar-info">
     <span id="fretbarLabel"></span>
     <button id="fretbarClear" hidden aria-label="Tout le manche">✕ tout le manche</button>
