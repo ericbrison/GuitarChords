@@ -5,11 +5,31 @@ const state = {
   root: 0,
   type: 'maj7',
   tuning: 'guitar-std',
-  inv: true,
+  bass: 'all',          // 'all' ou intervalle imposé à la basse (0 = fondamentale)
   omit5: true,
   labels: 'intervals',
   maxFret: 15,
 };
+
+/* couleur par degré chromatique : [fond, texte] — utilisée pour les
+   intervalles (relatifs à la fondamentale) ou les notes (absolues) */
+const PALETTE = {
+  0:  ['#EF4444', '#FFFFFF'],  // 1 / do        rouge
+  1:  ['#F97316', '#221204'],  // ♭9            orange
+  2:  ['#EAB308', '#221B03'],  // 9             jaune
+  3:  ['#84CC16', '#131F02'],  // ♭3, ♯9        lime
+  4:  ['#22C55E', '#04200D'],  // 3             vert
+  5:  ['#14B8A6', '#032420'],  // 4 / 11        sarcelle
+  6:  ['#22D3EE', '#062B33'],  // ♭5, ♯11       cyan
+  7:  ['#3B82F6', '#FFFFFF'],  // 5             bleu
+  8:  ['#818CF8', '#101438'],  // ♯5, ♭13       indigo
+  9:  ['#A855F7', '#FFFFFF'],  // 6 / 13        violet
+  10: ['#E879F9', '#33082E'],  // ♭7            fuchsia
+  11: ['#EC4899', '#FFFFFF'],  // 7             rose
+};
+function toneColor(interval, pc) {
+  return PALETTE[state.labels === 'notes' ? pc : interval];
+}
 
 const BATCH = 24;
 let voicings = [];
@@ -44,12 +64,15 @@ try {
   if (h.has('c')) {
     const p = parseChord(h.get('c'));
     state.root = p.rootPc; state.custom = p; state.type = 'custom';
+    if (p.bassIv != null) state.bass = p.bassIv;
   }
+  if (h.has('b')) state.bass = +h.get('b');
 } catch (e) {}
 
 function pushHash() {
   try {
     const p = { r: state.root, t: state.type, a: state.tuning };
+    if (typeof state.bass === 'number') p.b = state.bass;
     if (state.type === 'custom' || state.type.startsWith('saved:')) {
       delete p.t;
       p.c = NOTE_NAMES[state.root] + curChord.sym +
@@ -77,7 +100,12 @@ function buildControls() {
   });
 
   rebuildTypeSelect();
-  $('chordType').addEventListener('change', e => { state.type = e.target.value; refresh(); });
+  $('chordType').addEventListener('change', e => {
+    state.type = e.target.value;
+    const c = currentChord();
+    state.bass = c.bassIv != null ? c.bassIv : 'all';
+    refresh();
+  });
 
   const tn = $('tuning');
   TUNINGS.forEach(t => tn.add(new Option(t.label, t.id)));
@@ -88,7 +116,10 @@ function buildControls() {
     const open = $('options').classList.toggle('open');
     $('gearBtn').setAttribute('aria-expanded', String(open));
   });
-  $('optInv').addEventListener('change', e => { state.inv = e.target.checked; refresh(); });
+  $('optBass').addEventListener('change', e => {
+    state.bass = e.target.value === 'all' ? 'all' : +e.target.value;
+    refresh();
+  });
   $('optOmit5').addEventListener('change', e => { state.omit5 = e.target.checked; refresh(); });
   $('optLabels').addEventListener('change', e => { state.labels = e.target.value; refresh(); });
   $('optMaxFret').addEventListener('change', e => { state.maxFret = +e.target.value; refresh(); });
@@ -149,6 +180,7 @@ function applyFreeChord() {
     state.custom = p;
     state.root = p.rootPc;
     state.type = 'custom';
+    state.bass = p.bassIv != null ? p.bassIv : 'all';
     document.querySelectorAll('#notes .note').forEach((x, j) =>
       x.setAttribute('aria-pressed', String(j === p.rootPc)));
     rebuildTypeSelect();
@@ -180,24 +212,46 @@ function saveCurrentChord() {
   refresh();
 }
 
+function rebuildBassSelect(chord) {
+  const sel = $('optBass');
+  if (typeof state.bass === 'number' && !chord.intervals.includes(state.bass)) {
+    state.bass = 'all';
+  }
+  sel.innerHTML = '';
+  sel.add(new Option('Toutes (renversements inclus)', 'all'));
+  for (const iv of chord.intervals) {
+    const note = NOTE_NAMES[(state.root + iv) % 12];
+    const lbl = (chord.labels && chord.labels[iv]) || INTERVAL_LABELS[iv];
+    sel.add(new Option(note + ' — ' + (iv === 0 ? 'fondamentale' : 'degré ' + lbl), String(iv)));
+  }
+  sel.value = typeof state.bass === 'number' ? String(state.bass) : 'all';
+}
+
 /* --- recalcul --- */
 function refresh() {
   const chord = curChord = currentChord();
   const tuning = TUNINGS.find(t => t.id === state.tuning);
 
+  rebuildBassSelect(chord);
+  const bassIv = typeof state.bass === 'number' ? state.bass : null;
+
   voicings = findVoicings(state.root, chord, tuning, {
     maxFret: state.maxFret,
     omit5: state.omit5,
-    rootBassOnly: !state.inv,
-    bassIv: chord.bassIv != null ? chord.bassIv : null,
+    bassIv,
   });
 
   const name = NOTE_NAMES[state.root];
-  const slash = chord.bassIv != null
-    ? '<span style="font-size:55%">/' + NOTE_NAMES[(state.root + chord.bassIv) % 12] + '</span>' : '';
+  const slash = bassIv != null && bassIv !== 0
+    ? '<span class="slash">/' + NOTE_NAMES[(state.root + bassIv) % 12] + '</span>' : '';
   $('chordName').innerHTML = name + (chord.sym ? '<sup>' + chord.sym + '</sup>' : '') + slash;
-  $('chordNotes').textContent =
-    chord.intervals.map(iv => NOTE_NAMES[(state.root + iv) % 12]).join(' · ');
+  $('chordTones').innerHTML = chord.intervals.map(iv => {
+    const pc = (state.root + iv) % 12;
+    const lbl = (chord.labels && chord.labels[iv]) || INTERVAL_LABELS[iv];
+    const [bg, fg] = toneColor(iv, pc);
+    return '<span class="tone"><i style="background:' + bg + ';color:' + fg + '">' +
+           lbl + '</i>' + NOTE_NAMES[pc] + '</span>';
+  }).join('');
   $('chordCount').innerHTML = '<b>' + voicings.length + '</b> position' + (voicings.length > 1 ? 's' : '');
 
   document.title = name + chord.sym + ' — Manche';
@@ -276,99 +330,87 @@ function diagramSVG(v, tuning) {
 
   s2.push('<svg viewBox="0 0 ' + W + ' ' + H + '" role="img">');
 
-  // défs : bois + laiton + perloïd
-  s2.push('<defs>',
-    '<linearGradient id="wd" x1="0" y1="0" x2="1" y2="1">',
-    '<stop offset="0" stop-color="#4A3423"/><stop offset=".55" stop-color="#3A2818"/>',
-    '<stop offset="1" stop-color="#2E1F12"/></linearGradient>',
-    '<linearGradient id="br" x1="0" y1="0" x2="0" y2="1">',
-    '<stop offset="0" stop-color="#E7C36B"/><stop offset=".5" stop-color="#C99F44"/>',
-    '<stop offset="1" stop-color="#8F6F28"/></linearGradient>',
-    '<linearGradient id="fr" x1="0" y1="0" x2="0" y2="1">',
-    '<stop offset="0" stop-color="#D8D3C8"/><stop offset="1" stop-color="#8B857A"/></linearGradient>',
-    '</defs>');
-
-  // touche
+  // touche neutre sombre : les pastilles colorées portent l'information
   s2.push('<rect x="' + (LEFT - 7) + '" y="' + (TOP - 2) + '" width="' + (gridW + 14) +
-    '" height="' + (NROWS * fretH + 4) + '" rx="4" fill="url(#wd)"/>');
-  // veinage discret
-  for (let i = 1; i <= 3; i++) {
-    const y = TOP + (NROWS * fretH) * (i / 3.6) + 3;
-    s2.push('<path d="M' + (LEFT - 5) + ' ' + y + ' q ' + (gridW / 2) + ' 4 ' + (gridW + 10) +
-      ' 0" stroke="#00000022" fill="none"/>');
-  }
+    '" height="' + (NROWS * fretH + 4) + '" rx="4" fill="#262B33"/>');
 
-  // repères perloïd (cases 3,5,7,9,15,17 simples — 12 double)
+  // repères de cases (3,5,7,9,15,17… — double au 12)
   const INLAYS = [3, 5, 7, 9, 15, 17, 19, 21];
   for (let r = 0; r < NROWS; r++) {
     const fret = base + r;
     const cy = fy(r) + fretH / 2;
     if (fret === 12) {
-      s2.push('<circle cx="' + (LEFT + gridW * .3) + '" cy="' + cy + '" r="3.4" fill="#EDE5D0" opacity=".85"/>',
-              '<circle cx="' + (LEFT + gridW * .7) + '" cy="' + cy + '" r="3.4" fill="#EDE5D0" opacity=".85"/>');
+      s2.push('<circle cx="' + (LEFT + gridW * .3) + '" cy="' + cy + '" r="3.2" fill="#3C434F"/>',
+              '<circle cx="' + (LEFT + gridW * .7) + '" cy="' + cy + '" r="3.2" fill="#3C434F"/>');
     } else if (INLAYS.includes(fret)) {
-      s2.push('<circle cx="' + (W - RIGHT + LEFT) / 2 + '" cy="' + cy + '" r="3.4" fill="#EDE5D0" opacity=".85"/>');
+      s2.push('<circle cx="' + (LEFT + gridW / 2) + '" cy="' + cy + '" r="3.2" fill="#3C434F"/>');
     }
   }
 
   // frettes
   for (let r = 1; r <= NROWS; r++) {
-    s2.push('<rect x="' + (LEFT - 7) + '" y="' + (fy(r) - 1.1) + '" width="' + (gridW + 14) +
-      '" height="2.2" rx="1.1" fill="url(#fr)"/>');
+    s2.push('<rect x="' + (LEFT - 7) + '" y="' + (fy(r) - 1) + '" width="' + (gridW + 14) +
+      '" height="2" rx="1" fill="#4A5160"/>');
   }
   // sillet ou numéro de case
   if (base === 1) {
     s2.push('<rect x="' + (LEFT - 7) + '" y="' + (TOP - 4.5) + '" width="' + (gridW + 14) +
-      '" height="5" rx="1.5" fill="#EDE5D0"/>');
+      '" height="5" rx="1.5" fill="#E8E4DA"/>');
   } else {
-    s2.push('<rect x="' + (LEFT - 7) + '" y="' + (TOP - 1.4) + '" width="' + (gridW + 14) +
-      '" height="2.6" rx="1.2" fill="url(#fr)"/>');
+    s2.push('<rect x="' + (LEFT - 7) + '" y="' + (TOP - 1.2) + '" width="' + (gridW + 14) +
+      '" height="2.4" rx="1.2" fill="#4A5160"/>');
     s2.push('<text x="' + (LEFT - 12) + '" y="' + (TOP + fretH / 2 + 4) +
-      '" text-anchor="end" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#D2A84E">' + base + '</text>');
+      '" text-anchor="end" font-family="ui-monospace,Menlo,monospace" font-size="11"' +
+      ' font-weight="700" fill="#E8E4DA">' + base + '</text>');
   }
 
-  // cordes (épaisseur décroissante vers l'aigu)
+  // cordes
   for (let s = 0; s < nS; s++) {
-    const w = 2.4 - 1.6 * (s / (nS - 1));
+    const w = 2.2 - 1.4 * (s / (nS - 1));
     s2.push('<rect x="' + (sx(s) - w / 2) + '" y="' + (TOP - 2) + '" width="' + w +
-      '" height="' + (NROWS * fretH + 4) + '" fill="#9A9184" opacity=".9"/>');
+      '" height="' + (NROWS * fretH + 4) + '" fill="#6B7280"/>');
   }
 
-  // barré
+  // barré : bande claire discrète derrière les pastilles
   if (v.barre) {
-    const r = v.barre.fret - base;
-    const y = fy(r) + fretH / 2;
+    const y = fy(v.barre.fret - base) + fretH / 2;
     s2.push('<rect x="' + (sx(v.barre.from) - 7.5) + '" y="' + (y - 7) +
-      '" width="' + (sx(v.barre.to) - sx(v.barre.from) + 15) + '" height="14" rx="7" fill="url(#br)" opacity=".95"/>');
+      '" width="' + (sx(v.barre.to) - sx(v.barre.from) + 15) +
+      '" height="14" rx="7" fill="#E8E4DA" opacity=".30"/>');
   }
 
-  // marqueurs o / x, pastilles
+  // marqueurs ✕ / ○ et pastilles colorées
   const chordPcs = new Map();
   curChord.intervals.forEach(iv => chordPcs.set((state.root + iv) % 12, iv));
 
   for (let s = 0; s < nS; s++) {
     const f = v.frets[s], x = sx(s);
     if (f === MUTE) {
-      s2.push('<text x="' + x + '" y="' + (TOP - 9) + '" text-anchor="middle" font-size="11"' +
-        ' font-family="system-ui" fill="#8A7B65">✕</text>');
+      s2.push('<text x="' + x + '" y="' + (TOP - 8) + '" text-anchor="middle" font-size="12"' +
+        ' font-weight="700" font-family="system-ui" fill="#7A8089">\u2715</text>');
       continue;
     }
     const midi = tuning.midi[s] + f;
-    const iv = chordPcs.get(midi % 12);
-    const label = state.labels === 'notes' ? NOTE_NAMES[midi % 12]
-        : ((curChord.labels && curChord.labels[iv]) || INTERVAL_LABELS[iv]);
+    const pc = midi % 12;
+    const iv = chordPcs.get(pc);
+    const label = state.labels === 'notes' ? NOTE_NAMES[pc]
+      : ((curChord.labels && curChord.labels[iv]) || INTERVAL_LABELS[iv]);
+    const [bg, fg] = toneColor(iv, pc);
+    const small = label.length > 2 ? 7.4 : label.length > 1 ? 8.2 : 9.5;
     if (f === 0) {
-      s2.push('<circle cx="' + x + '" cy="' + (TOP - 12) + '" r="5" fill="none" stroke="#EDE5D0" stroke-width="1.5"/>');
-      s2.push('<text x="' + x + '" y="' + (TOP - 20) + '" text-anchor="middle" font-size="8.5"' +
-        ' font-family="ui-monospace,Menlo,monospace" fill="#A2937D">' + label + '</text>');
+      // corde à vide : anneau coloré au-dessus du sillet
+      s2.push('<circle cx="' + x + '" cy="' + (TOP - 13) + '" r="7.4" fill="#171310"' +
+        ' stroke="' + bg + '" stroke-width="2.4"/>');
+      s2.push('<text x="' + x + '" y="' + (TOP - 13 + small * .36) + '" text-anchor="middle"' +
+        ' font-size="' + (small - 1) + '" font-weight="700"' +
+        ' font-family="ui-monospace,Menlo,monospace" fill="' + bg + '">' + label + '</text>');
     } else {
-      const r = f - base;
-      const cy = fy(r) + fretH / 2;
-      const isRoot = iv === 0;
-      s2.push('<circle cx="' + x + '" cy="' + cy + '" r="8.6" fill="url(#br)"' +
-        (isRoot ? ' stroke="#EDE5D0" stroke-width="1.6"' : ' stroke="#00000055" stroke-width=".8"') + '/>');
-      s2.push('<text x="' + x + '" y="' + (cy + 3.4) + '" text-anchor="middle" font-size="9"' +
-        ' font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="#241A0B">' + label + '</text>');
+      const cy = fy(f - base) + fretH / 2;
+      s2.push('<circle cx="' + x + '" cy="' + cy + '" r="9.4" fill="' + bg + '"' +
+        ' stroke="#12151A" stroke-width="1"/>');
+      s2.push('<text x="' + x + '" y="' + (cy + small * .36) + '" text-anchor="middle"' +
+        ' font-size="' + small + '" font-weight="700"' +
+        ' font-family="ui-monospace,Menlo,monospace" fill="' + fg + '">' + label + '</text>');
     }
   }
 
