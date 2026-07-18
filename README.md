@@ -111,6 +111,15 @@ Le bouton ★ enregistre le **type** d'accord (pas la fondamentale) : un
 transpose sur les 12 fondamentales. Stockage en `localStorage` (local à
 l'appareil, survit hors-ligne). Gestion/suppression dans le panneau ⚙.
 
+## Réglages
+
+Tous les réglages (accordage, pastilles, notes omissibles, renversements,
+cases explorées, thème, grande taille, orientation et zoom du manche, cases
+du manche) sont conservés d'une session à l'autre (`localStorage`,
+clé `guitarchords.settings`). La basse des accords est un simple sélecteur
+de note, sur la fondamentale par défaut ; cocher « Renversements » dans ⚙
+libère la basse (le sélecteur est alors ignoré).
+
 ## Position sur le manche
 
 Un double slider sous les contrôles filtre les positions par plage de cases

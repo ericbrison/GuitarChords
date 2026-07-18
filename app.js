@@ -5,7 +5,8 @@ const state = {
   root: 0,
   type: 'maj7',
   tuning: 'guitar-std',
-  bass: 'all',          // 'all' ou intervalle imposé à la basse (0 = fondamentale)
+  bass: 0,              // intervalle à la basse (0 = fondamentale)
+  inv: false,           // renversements : basse libre, le sélecteur est ignoré
   theme: 'auto',
   big: false,           // mode basse vision : une colonne, éléments agrandis
   fretMin: null,        // filtre de position : plage de cases [fretMin, fretMax]
@@ -21,7 +22,36 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v21';
+const APP_VERSION = 'v22';
+
+/* --- persistance de toutes les options --- */
+const SETT_KEY = 'guitarchords.settings';
+const SETT_FIELDS = ['tuning', 'labels', 'omit5', 'maxFret', 'inv', 'theme',
+                     'big', 'neckView', 'scaleMaxFret', 'neckZoom'];
+function saveSettings() {
+  try {
+    const o = {};
+    SETT_FIELDS.forEach(f => o[f] = state[f]);
+    localStorage.setItem(SETT_KEY, JSON.stringify(o));
+  } catch (e) {}
+}
+function loadSettings() {
+  try {
+    const o = JSON.parse(localStorage.getItem(SETT_KEY) || '{}');
+    if (TUNINGS.some(t => t.id === o.tuning)) state.tuning = o.tuning;
+    if (o.labels === 'notes' || o.labels === 'intervals') state.labels = o.labels;
+    if (typeof o.omit5 === 'boolean') state.omit5 = o.omit5;
+    if ([12, 15, 19, 22].includes(o.maxFret)) state.maxFret = o.maxFret;
+    if (typeof o.inv === 'boolean') state.inv = o.inv;
+    if (['auto', 'light', 'dark'].includes(o.theme)) state.theme = o.theme;
+    if (typeof o.big === 'boolean') state.big = o.big;
+    if (o.neckView === 'v-top' || o.neckView === 'h-left') state.neckView = o.neckView;
+    else if (o.neckView === 'v-bottom') state.neckView = 'v-top';
+    else if (o.neckView === 'h-right') state.neckView = 'h-left';
+    if ([15, 19, 22, 24].includes(o.scaleMaxFret)) state.scaleMaxFret = o.scaleMaxFret;
+    if (NECK_ZOOMS.includes(o.neckZoom)) state.neckZoom = o.neckZoom;
+  } catch (e) {}
+}
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
@@ -92,16 +122,8 @@ let savedChords = [];
 try {
   savedChords = JSON.parse(localStorage.getItem(LS_KEY) ||
                 localStorage.getItem('manche.chords') || '[]');  // migration ancien nom
-  const th = localStorage.getItem(THEME_KEY);
-  if (th === 'light' || th === 'dark' || th === 'auto') state.theme = th;
-  state.big = localStorage.getItem('guitarchords.big') === '1';
-  const nv = localStorage.getItem('guitarchords.neck');
-  if (['h-left', 'h-right', 'v-top', 'v-bottom'].includes(nv)) state.neckView = nv;
-  const sf = +localStorage.getItem('guitarchords.scalefrets');
-  if ([15, 19, 22, 24].includes(sf)) state.scaleMaxFret = sf;
-  const nz = +localStorage.getItem('guitarchords.neckzoom');
-  if (nz >= 1 && nz <= 3) state.neckZoom = nz;
 } catch (e) {}
+loadSettings();
 function persistSaved() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(savedChords)); return true; }
   catch (e) { return false; }
@@ -149,7 +171,8 @@ try {
     state.root = p.rootPc; state.custom = p; state.type = 'custom';
     if (p.bassIv != null) state.bass = p.bassIv;
   }
-  if (h.has('b')) state.bass = +h.get('b');
+  if (h.has('b')) state.bass = Math.min(11, Math.max(0, +h.get('b') || 0));
+  if (h.has('i')) state.inv = h.get('i') === '1';
   if (h.has('fm') && h.has('fx')) { state.fretMin = +h.get('fm'); state.fretMax = +h.get('fx'); }
   if (h.get('tool') === 's') state.tool = 'scales';
   if (h.has('g')) {
@@ -169,7 +192,8 @@ try {
 function pushHash() {
   try {
     const p = { r: state.root, t: state.type, a: state.tuning };
-    if (typeof state.bass === 'number') p.b = state.bass;
+    if (!state.inv && state.bass !== 0) p.b = state.bass;
+    if (state.inv) p.i = '1';
     if (state.fretMin != null) { p.fm = state.fretMin; p.fx = state.fretMax; }
     if (state.type === 'custom' || state.type.startsWith('saved:')) {
       delete p.t;
@@ -199,23 +223,30 @@ function buildControls() {
   $('chordType').addEventListener('change', e => {
     state.type = e.target.value;
     const c = currentChord();
-    state.bass = c.bassIv != null ? c.bassIv : 'all';
+    state.bass = c.bassIv != null ? c.bassIv : 0;
     refresh();
   });
 
   const tn = $('tuning');
   TUNINGS.forEach(t => tn.add(new Option(t.label, t.id)));
   tn.value = state.tuning;
-  tn.addEventListener('change', () => { state.tuning = tn.value; refreshCurrent(); });
+  tn.addEventListener('change', () => { state.tuning = tn.value; saveSettings(); refreshCurrent(); });
 
   $('gearBtn').addEventListener('click', () => {
     const open = $('options').classList.toggle('open');
     $('gearBtn').setAttribute('aria-expanded', String(open));
   });
+  $('optInv').checked = state.inv;
+  $('optInv').addEventListener('change', e => {
+    state.inv = e.target.checked;
+    saveSettings();
+    refresh();
+  });
+
   $('optBig').checked = state.big;
   $('optBig').addEventListener('change', e => {
     state.big = e.target.checked;
-    try { localStorage.setItem('guitarchords.big', state.big ? '1' : '0'); } catch (err) {}
+    saveSettings();
     applyBig();
     refreshCurrent();
   });
@@ -223,30 +254,34 @@ function buildControls() {
   $('optNeck').value = state.neckView;
   $('optNeck').addEventListener('change', e => {
     state.neckView = e.target.value;
-    try { localStorage.setItem('guitarchords.neck', state.neckView); } catch (err) {}
+    saveSettings();
     refreshScales();
   });
   $('scaleFrets').value = String(state.scaleMaxFret);
   $('scaleFrets').addEventListener('change', e => {
     state.scaleMaxFret = +e.target.value;
-    try { localStorage.setItem('guitarchords.scalefrets', String(state.scaleMaxFret)); } catch (err) {}
+    saveSettings();
     refreshScales();
   });
 
   $('optTheme').value = state.theme;
   $('optTheme').addEventListener('change', e => {
     state.theme = e.target.value;
-    try { localStorage.setItem(THEME_KEY, state.theme); } catch (err) {}
+    saveSettings();
     applyTheme(true);
   });
   $('optBass').addEventListener('change', e => {
-    state.bass = e.target.value === 'all' ? 'all' : +e.target.value;
+    state.bass = +e.target.value;
     refresh();
   });
-  $('optOmit5').addEventListener('change', e => { state.omit5 = e.target.checked; refresh(); });
-  $('optLabels').addEventListener('change', e => { state.labels = e.target.value; refreshCurrent(); });
+  $('optOmit5').checked = state.omit5;
+  $('optLabels').value = state.labels;
+  $('optMaxFret').value = String(state.maxFret);
+  $('optOmit5').addEventListener('change', e => { state.omit5 = e.target.checked; saveSettings(); refresh(); });
+  $('optLabels').addEventListener('change', e => { state.labels = e.target.value; saveSettings(); refreshCurrent(); });
   $('optMaxFret').addEventListener('change', e => {
     state.maxFret = +e.target.value;
+    saveSettings();
     if (state.fretMax != null && state.fretMax > state.maxFret) {
       state.fretMax = state.maxFret;
       if (state.fretMin > state.maxFret) state.fretMin = state.fretMax = null;
@@ -345,7 +380,7 @@ function applyFreeChord() {
     state.custom = p;
     state.root = p.rootPc;
     state.type = 'custom';
-    state.bass = p.bassIv != null ? p.bassIv : 'all';
+    state.bass = p.bassIv != null ? p.bassIv : 0;
     rebuildTypeSelect();
     freeMsg('');
     refresh();
@@ -429,16 +464,11 @@ function clearFretFilter() {
 function rebuildBassSelect(chord) {
   const sel = $('optBass');
   sel.innerHTML = '';
-  sel.add(new Option('Basse : toutes', 'all'));
   for (let iv = 0; iv < 12; iv++) {
-    const note = NOTE_NAMES[(state.root + iv) % 12];
-    const inChord = chord.intervals.includes(iv);
-    const lbl = (chord.labels && chord.labels[iv]) || INTERVAL_LABELS[iv];
-    const txt = 'Basse : ' + note + ' — ' + (iv === 0 ? 'fondamentale'
-      : inChord ? 'degré ' + lbl : 'hors accord (' + lbl + ')');
-    sel.add(new Option(txt, String(iv)));
+    sel.add(new Option(NOTE_NAMES[(state.root + iv) % 12], String(iv)));
   }
-  sel.value = typeof state.bass === 'number' ? String(state.bass) : 'all';
+  sel.value = String(state.bass);
+  sel.disabled = state.inv;   // renversements : la basse est libre
 }
 
 /* --- recalcul --- */
@@ -448,7 +478,7 @@ function refresh() {
 
   $('rootSel').value = String(state.root);
   rebuildBassSelect(chord);
-  const bassIv = typeof state.bass === 'number' ? state.bass : null;
+  const bassIv = state.inv ? null : state.bass;
 
   curPcs = new Map();
   chord.intervals.forEach(iv => curPcs.set((state.root + iv) % 12, iv));
@@ -672,7 +702,7 @@ function neckSetZoom(k, anchorX) {
   const kOld = state.neckZoom;
   const focus = (wrap.scrollLeft + ax) / kOld;
   state.neckZoom = k;
-  try { localStorage.setItem('guitarchords.neckzoom', String(k)); } catch (e) {}
+  saveSettings();
   refreshScales();
   wrap.scrollLeft = focus * k - ax;
 }

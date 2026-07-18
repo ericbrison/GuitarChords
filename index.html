@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v21">
+<link rel="stylesheet" href="style.css?v22">
 </head>
 <body>
 
@@ -25,6 +25,12 @@
 </nav>
 
 <div id="options">
+  <div class="row">
+    <label for="optInv">Renversements
+      <span class="hint">Basse libre : toutes les positions, le sélecteur de basse est ignoré</span>
+    </label>
+    <input type="checkbox" id="optInv">
+  </div>
   <div class="row">
     <label for="optOmit5">Notes omissibles
       <span class="hint">Quinte juste (accords de 4 sons et plus) et 9ᵉ des accords de 11/13</span>
@@ -85,7 +91,8 @@
     <select id="chordType" aria-label="Type d’accord"></select>
   </div>
   <div class="selects">
-    <select id="optBass" aria-label="Basse de l’accord"></select>
+    <label class="inline-label" for="optBass">Basse</label>
+    <select id="optBass" aria-label="Note à la basse"></select>
   </div>
   <div class="freechord">
     <input id="freeInput" placeholder="Accord libre… ex. CM7add11, F♯m7♭5/A"
@@ -142,10 +149,8 @@
   </div>
   <div class="selects neck-opts">
     <select id="optNeck" aria-label="Orientation du manche">
-      <option value="h-left" selected>Horizontal — sillet à gauche</option>
-      <option value="h-right">Horizontal — sillet à droite (gaucher)</option>
-      <option value="v-top">Vertical — sillet en haut</option>
-      <option value="v-bottom">Vertical — sillet en bas</option>
+      <option value="h-left" selected>Horizontal</option>
+      <option value="v-top">Vertical</option>
     </select>
     <span class="neck-zoom" role="group" aria-label="Agrandissement du manche">
       <button id="neckZoomOut" aria-label="Réduire">−</button>
@@ -165,7 +170,7 @@
 
 <footer class="app">Touchez un diagramme pour l’entendre · fonctionne hors-ligne · <span id="appVersion"></span></footer>
 
-<script src="engine.js?v21"></script>
-<script src="app.js?v21"></script>
+<script src="engine.js?v22"></script>
+<script src="app.js?v22"></script>
 </body>
 </html>

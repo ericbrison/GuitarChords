@@ -585,3 +585,11 @@ footer.app {
 @media (pointer: coarse) {
   .neck-zoom { display: none; }
 }
+
+
+.inline-label {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 14px;
+}
+select:disabled { opacity: .45; }
