@@ -624,3 +624,24 @@ select:disabled { opacity: .45; }
   cursor: pointer;
 }
 .upd-btn:active { background: var(--raise); }
+
+
+/* ============ Paysage (smartphone/tablette tournés) ============ */
+@media (orientation: landscape) and (max-height: 540px) {
+  /* libérer la hauteur : l'en-tête se réduit, les contrôles ne collent plus */
+  header.app { padding-top: 6px; padding-bottom: 2px; }
+  .wordmark { font-size: 18px; }
+  .tagline { display: none; }
+  .tools { padding-bottom: 4px; }
+  .tools button { height: 34px; }
+  .controls { position: static; }
+  .chord-banner { padding-top: 6px; }
+  .chord-name { font-size: 34px; }
+  /* la grille profite de la largeur */
+  .grid { grid-template-columns: repeat(4, 1fr); }
+  .ivchips { grid-template-columns: repeat(12, 1fr); }
+  .ivchip { height: 46px; }
+}
+@media (orientation: landscape) and (max-height: 540px) and (min-width: 780px) {
+  .grid { grid-template-columns: repeat(5, 1fr); }
+}
