@@ -22,12 +22,13 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v32';
+const APP_VERSION = 'v33';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
 const SETT_FIELDS = ['tuning', 'labels', 'omit5', 'maxFret', 'inv', 'theme',
-                     'big', 'neckView', 'scaleMaxFret', 'neckZoom'];
+                     'big', 'neckView', 'scaleMaxFret', 'neckZoom',
+                     'root', 'type', 'custom', 'bass', 'scale', 'scaleCustom', 'tool'];
 function saveSettings() {
   try {
     const o = {};
@@ -49,7 +50,21 @@ function loadSettings() {
     else if (o.neckView === 'v-bottom') state.neckView = 'v-top';
     else if (o.neckView === 'h-right') state.neckView = 'h-left';
     if ([15, 19, 22, 24].includes(o.scaleMaxFret)) state.scaleMaxFret = o.scaleMaxFret;
-    if (NECK_ZOOMS.includes(o.neckZoom)) state.neckZoom = o.neckZoom;
+    if ([1, 1.25, 1.5, 1.75, 2, 2.5, 3].includes(o.neckZoom)) state.neckZoom = o.neckZoom;
+
+    // dernière sélection — le hash, lu après, reste prioritaire
+    if (Number.isInteger(o.root) && o.root >= 0 && o.root < 12) state.root = o.root;
+    if (o.custom && Array.isArray(o.custom.intervals)) state.custom = o.custom;
+    if (typeof o.type === 'string' &&
+        (o.type !== 'custom' || state.custom)) state.type = o.type;
+    if ((o.bass === null ||
+        (Number.isInteger(o.bass) && o.bass >= 0 && o.bass < 12))) state.bass = o.bass;
+    if (o.scaleCustom && Array.isArray(o.scaleCustom.intervals)) {
+      state.scaleCustom = o.scaleCustom;
+    }
+    if (typeof o.scale === 'string' &&
+        (o.scale !== 'custom' || state.scaleCustom)) state.scale = o.scale;
+    if ((o.tool === 'chords' || o.tool === 'scales')) state.tool = o.tool;
   } catch (e) {}
 }
 
@@ -163,18 +178,20 @@ const $ = id => document.getElementById(id);
 /* --- lecture de l'état depuis l'URL (partage) --- */
 try {
   const h = new URLSearchParams(location.hash.slice(1));
-  if (h.has('r')) state.root = Math.min(11, Math.max(0, +h.get('r') || 0));
-  if (h.has('t') && CHORD_TYPES.some(c => c.id === h.get('t'))) state.type = h.get('t');
-  if (h.has('a') && TUNINGS.some(t => t.id === h.get('a'))) state.tuning = h.get('a');
+  if (h.has('r')) { state.root = Math.min(11, Math.max(0, +h.get('r') || 0)); }
+  if (h.has('t') && CHORD_TYPES.some(c => c.id === h.get('t'))) { state.type = h.get('t'); }
+  if (h.has('a') && TUNINGS.some(t => t.id === h.get('a'))) { state.tuning = h.get('a'); }
   if (h.has('c')) {
     const p = parseChord(h.get('c'));
     state.root = p.rootPc; state.custom = p; state.type = 'custom';
     if (p.bassIv != null) state.bass = p.bassIv;
+   
   }
-  if (h.has('b')) state.bass = Math.min(11, Math.max(0, +h.get('b') || 0));
-  if (h.has('i')) state.inv = h.get('i') === '1';
+  if (h.has('b')) { state.bass = Math.min(11, Math.max(0, +h.get('b') || 0)); }
+  else if (h.has('r') || h.has('t') || h.has('c')) state.bass = null;  // lien sans basse imposée
+  if (h.has('i')) { state.inv = h.get('i') === '1'; }
   if (h.has('fm') && h.has('fx')) { state.fretMin = +h.get('fm'); state.fretMax = +h.get('fx'); }
-  if (h.get('tool') === 's') state.tool = 'scales';
+  if (h.get('tool') === 's') { state.tool = 'scales'; }
   if (h.has('g')) {
     if (h.get('g') === 'custom' && h.has('gi')) {
       state.scaleCustom = {
@@ -183,8 +200,10 @@ try {
       };
       if (!state.scaleCustom.intervals.includes(0)) state.scaleCustom.intervals.unshift(0);
       state.scale = 'custom';
+     
     } else if (SCALES.some(s => s.id === h.get('g'))) {
       state.scale = h.get('g');
+     
     }
   }
 } catch (e) {}
@@ -526,6 +545,7 @@ function refresh() {
   renderSavedList();
   pushHash();
 
+  saveSettings();
   $('results').innerHTML = '';
   rendered = 0;
   if (voicings.length === 0) {
@@ -683,6 +703,7 @@ function refreshScales() {
   $('scaleName').value = state.scale.startsWith('savedscale:') ? sc.name
     : state.scale === 'custom' ? (sc.name || '') : '';
 
+  saveSettings();
   $('neckCanvas').innerHTML = neckSVG(sc, tuning);
   updateNeckZoomUI();
   renderSavedScalesList();
