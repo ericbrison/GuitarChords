@@ -19,9 +19,12 @@
 </header>
 
 <div class="controls">
-  <div class="notes" id="notes" aria-label="Note fondamentale"></div>
   <div class="selects">
+    <select id="rootSel" aria-label="Fondamentale"></select>
     <select id="chordType" aria-label="Type d’accord"></select>
+  </div>
+  <div class="selects">
+    <select id="optBass" aria-label="Basse de l’accord"></select>
     <select id="tuning" aria-label="Accordage"></select>
     <button class="gear" id="gearBtn" aria-expanded="false" aria-controls="options" title="Options">⚙</button>
   </div>
@@ -34,12 +37,6 @@
   </div>
   <div class="free-msg" id="freeMsg" role="status"></div>
   <div id="options">
-    <div class="row">
-      <label for="optBass">Basse
-        <span class="hint">Note la plus grave des positions (Cm/G : choisir G)</span>
-      </label>
-      <select id="optBass"></select>
-    </div>
     <div class="row">
       <label for="optOmit5">Notes omissibles
         <span class="hint">Quinte juste (accords de 4 sons et plus) et 9ᵉ des accords de 11/13</span>

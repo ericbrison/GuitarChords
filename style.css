@@ -30,7 +30,6 @@
   --fret:    #B9B2A2;
   --string:  #9A937F;
 }
-:root[data-theme="light"] button.note[aria-pressed="true"] { color: #FFFDF7; }
 :root[data-theme="light"] .free-msg.err { color: #B4502E; }
 
 * { box-sizing: border-box; }
@@ -77,39 +76,13 @@ header.app {
   background: linear-gradient(var(--bg) 82%, transparent);
   padding: 4px 0 10px;
 }
-.notes {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 6px 16px;
-  scrollbar-width: none;
-}
-.notes::-webkit-scrollbar { display: none; }
-button.note {
-  flex: 0 0 auto;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 10px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  font-family: var(--font-data);
-  font-size: 16px;
-  cursor: pointer;
-}
-button.note[aria-pressed="true"] {
-  background: var(--brass);
-  border-color: var(--brass);
-  color: #221A0C;
-  font-weight: 700;
-}
 .selects {
   display: flex;
   gap: 8px;
   padding: 0 16px;
   align-items: center;
 }
+.selects + .selects { margin-top: 8px; }
 .selects select {
   flex: 1 1 auto;
   min-width: 0;

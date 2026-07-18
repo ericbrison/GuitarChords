@@ -128,20 +128,10 @@ function pushHash() {
 
 /* --- contrôles --- */
 function buildControls() {
-  const notes = $('notes');
-  NOTE_NAMES.forEach((n, i) => {
-    const b = document.createElement('button');
-    b.className = 'note';
-    b.textContent = n;
-    b.setAttribute('aria-pressed', String(i === state.root));
-    b.addEventListener('click', () => {
-      state.root = i;
-      notes.querySelectorAll('.note').forEach((x, j) =>
-        x.setAttribute('aria-pressed', String(j === i)));
-      refresh();
-    });
-    notes.appendChild(b);
-  });
+  const rs = $('rootSel');
+  NOTE_NAMES.forEach((n, i) => rs.add(new Option(n, String(i))));
+  rs.value = String(state.root);
+  rs.addEventListener('change', () => { state.root = +rs.value; refresh(); });
 
   rebuildTypeSelect();
   $('chordType').addEventListener('change', e => {
@@ -243,8 +233,6 @@ function applyFreeChord() {
     state.root = p.rootPc;
     state.type = 'custom';
     state.bass = p.bassIv != null ? p.bassIv : 'all';
-    document.querySelectorAll('#notes .note').forEach((x, j) =>
-      x.setAttribute('aria-pressed', String(j === p.rootPc)));
     rebuildTypeSelect();
     freeMsg('');
     refresh();
@@ -337,12 +325,12 @@ function updateFretbarUI() {
 function rebuildBassSelect(chord) {
   const sel = $('optBass');
   sel.innerHTML = '';
-  sel.add(new Option('Toutes (renversements inclus)', 'all'));
+  sel.add(new Option('Basse : toutes', 'all'));
   for (let iv = 0; iv < 12; iv++) {
     const note = NOTE_NAMES[(state.root + iv) % 12];
     const inChord = chord.intervals.includes(iv);
     const lbl = (chord.labels && chord.labels[iv]) || INTERVAL_LABELS[iv];
-    const txt = note + ' — ' + (iv === 0 ? 'fondamentale'
+    const txt = 'Basse : ' + note + ' — ' + (iv === 0 ? 'fondamentale'
       : inChord ? 'degré ' + lbl : 'hors accord (' + lbl + ')');
     sel.add(new Option(txt, String(iv)));
   }
@@ -354,6 +342,7 @@ function refresh() {
   const chord = curChord = currentChord();
   const tuning = TUNINGS.find(t => t.id === state.tuning);
 
+  $('rootSel').value = String(state.root);
   rebuildBassSelect(chord);
   const bassIv = typeof state.bass === 'number' ? state.bass : null;
 
