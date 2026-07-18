@@ -1,9 +1,12 @@
 /* Service worker — cache-first, hors-ligne complet.
    Incrémentez VERSION à chaque mise à jour des fichiers. */
-const VERSION = 'manche-v1';
+const VERSION = 'manche-v2';
 const ASSETS = [
   './',
   './index.html',
+  './style.css',
+  './engine.js',
+  './app.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

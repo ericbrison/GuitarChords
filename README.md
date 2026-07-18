@@ -9,11 +9,14 @@ installable sur smartphone (PWA), utilisable hors-ligne.
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | Application complète (moteur + interface inline, autonome) |
+| `index.html` | Structure de la page |
+| `style.css` | Styles (mobile d'abord, adaptations tablette/desktop) |
+| `engine.js` | Moteur : génération des voicings + analyse des noms d'accords (`parseChord`) |
+| `app.js` | Interface : contrôles, diagrammes SVG, audio, accords enregistrés |
 | `manifest.json` | Manifeste PWA (installation sur l'écran d'accueil) |
-| `sw.js` | Service worker cache-first (hors-ligne) |
+| `sw.js` | Service worker cache-first (hors-ligne) — **incrémenter `VERSION` à chaque mise à jour** |
 | `icon-*.png` | Icônes 192/512 + variante *maskable* Android |
-| `engine.js` | Source séparée du moteur de voicings (référence/tests, déjà inlinée dans index.html) |
+| `test.js`, `test-parse.js` | Tests du moteur et du parseur (`node test.js`) |
 
 ## Déploiement
 
@@ -74,7 +77,23 @@ jouabilité (fondamentale à la basse, nb de doigts, écart, cordes jouées).
 Accordages fournis : guitare standard, drop D, DADGAD, basse 4 et 5 cordes —
 extensibles dans `TUNINGS` (midi des cordes à vide, grave → aigu).
 
+## Accords libres et accords enregistrés
+
+Le champ « Accord libre » accepte n'importe quel nom : `CM7add11`,
+`F♯m7♭5/A`, `Bb13`, `C6/9`, `G7♯9`, `Cadd9`, `CmM7`, `C5`, `E7sus4`…
+Grammaire reconnue : qualité (m, dim/°, aug/+, ø), septièmes (7, M7/maj7/Δ),
+extensions empilées (9, 11, 13 — les notes intermédiaires deviennent
+omissibles), sixtes (6, 6/9), suspensions (sus2, sus4), ajouts
+(`add9`, `add11`, `add♯11`…), altérations (`♭5`, `♯5`, `♭9`, `♯9`, `♯11`,
+`♭13`), omissions (`no3`, `no5`) et basse imposée (`/E`).
+
+Le bouton ★ enregistre le **type** d'accord (pas la fondamentale) : un
+`M7add11` sauvegardé apparaît dans le sélecteur sous « ★ Mes accords » et se
+transpose sur les 12 fondamentales. Stockage en `localStorage` (local à
+l'appareil, survit hors-ligne). Gestion/suppression dans le panneau ⚙.
+
 ## État partageable
 
-La sélection est reflétée dans l'URL : `#r=0&t=maj7&a=guitar-std`
-(fondamentale, type, accordage). Un lien copié rouvre le même accord.
+La sélection est reflétée dans l'URL : `#r=0&t=maj7&a=guitar-std` (fondamentale, type, accordage) ou
+`#c=CM7add11&a=guitar-std` pour un accord libre. Un lien copié rouvre le
+même accord.

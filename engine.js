@@ -126,10 +126,11 @@ function findVoicings(rootPc, chordType, tuning, opts = {}) {
       }
     }
 
-    // graves : fondamentale ou renversement
+    // graves : fondamentale, renversement, ou basse imposée (accord /X)
     const bassIv = pcToInterval.get((tuning.midi[played[0]] + frets[played[0]]) % 12);
     const inversion = bassIv !== 0;
-    if (opts.rootBassOnly && inversion) return;
+    if (opts.bassIv != null) { if (bassIv !== opts.bassIv) return; }
+    else if (opts.rootBassOnly && inversion) return;
 
     const minFretted = fretted.length ? Math.min(...fretted.map(s => frets[s])) : 0;
     const maxFretted = fretted.length ? Math.max(...fretted.map(s => frets[s])) : 0;
@@ -169,6 +170,122 @@ function findVoicings(rootPc, chordType, tuning, opts = {}) {
   return kept.sort((a, b) => a.baseFret - b.baseFret || a.score - b.score);
 }
 
+
+/* ------------------------------------------------------------
+   Analyse d'un nom d'accord libre : "CM7add11", "F♯m7♭5/A",
+   "Bb13", "Cadd9", "C6/9", "Ddim7", "Esus4", "G7♯9", "C5"…
+   Retourne { rootPc, sym, intervals, labels, opt, bassIv }.
+   Lève une Error (message en français) si illisible.
+   ------------------------------------------------------------ */
+function parseChord(input) {
+  const PC = { c:0, d:2, e:4, f:5, g:7, a:9, b:11 };
+  const acc = a => (a === '#' || a === '\u266f') ? 1 : (a === 'b' || a === '\u266d') ? -1 : 0;
+
+  let s = String(input || '').trim().replace(/\s+/g, '');
+  if (!s) throw new Error('Saisissez un nom d\u2019accord (ex. CM7add11).');
+
+  const rm = s.match(/^([A-Ga-g])([#\u266fb\u266d]?)/);
+  if (!rm) throw new Error('Fondamentale illisible : commencez par une note A\u2013G.');
+  const rootPc = (PC[rm[1].toLowerCase()] + acc(rm[2]) + 12) % 12;
+  s = s.slice(rm[0].length);
+
+  // basse imposée "/X" en fin de nom
+  let bassPc = null;
+  const bm = s.match(/\/([A-Ga-g])([#\u266fb\u266d]?)$/);
+  if (bm) {
+    bassPc = (PC[bm[1].toLowerCase()] + acc(bm[2]) + 12) % 12;
+    s = s.slice(0, -bm[0].length);
+  }
+
+  // symbole affiché : la saisie, cosmétiquement normalisée
+  const sym = s.replace(/b(?=\d)/g, '\u266d').replace(/#/g, '\u266f');
+
+  // normalisation pour l'analyse ("J" = marqueur majeur 7)
+  s = s.replace(/maj|MAJ|Maj|[\u0394\u2206]/g, 'J').replace(/M/g, 'J')
+       .replace(/[()\u266d,]/g, m => m === '\u266d' ? 'b' : '')
+       .replace(/\u266f/g, '#').replace(/\u00b0/g, 'o').replace(/\u00f8/g, 'h')
+       .toLowerCase().replace(/min/g, 'm').replace(/[\u2212-]/g, 'm')
+       .replace(/j/g, 'J');
+
+  let third = 4, thirdLbl = '3', fifth = 7, fifthLbl = '5';
+  let seventh = null, sevLbl = null, dim = false, no3 = false, no5 = false;
+  const extras = new Map(), extraLbl = new Map(), optExtra = new Set();
+  const put = (semi, lbl, optional) => {
+    extras.set(semi, true); if (!extraLbl.has(semi)) extraLbl.set(semi, lbl);
+    if (optional) optExtra.add(semi);
+  };
+  const eat = re => { const t = s.match(re); if (t) s = s.slice(t[0].length); return t; };
+
+  // qualité initiale
+  if (eat(/^dim|^o/))       { third = 3; thirdLbl = '\u266d3'; fifth = 6; fifthLbl = '\u266d5'; dim = true; }
+  else if (eat(/^aug|^\+/)) { fifth = 8; fifthLbl = '\u266f5'; }
+  else if (eat(/^h/))        { third = 3; thirdLbl = '\u266d3'; fifth = 6; fifthLbl = '\u266d5'; seventh = 10; sevLbl = '\u266d7'; }
+  else if (eat(/^m/))        { third = 3; thirdLbl = '\u266d3'; }
+
+  let guard = 0;
+  while (s && guard++ < 24) {
+    if (eat(/^J(?=$)/)) { seventh = 11; sevLbl = '7'; }
+    else if (eat(/^J13/)) { seventh = 11; sevLbl = '7'; put(2, '9', true); put(9, '13'); }
+    else if (eat(/^J11/)) { seventh = 11; sevLbl = '7'; put(2, '9', true); put(5, '11'); }
+    else if (eat(/^J9/))  { seventh = 11; sevLbl = '7'; put(2, '9'); }
+    else if (eat(/^J7?/)) { seventh = 11; sevLbl = '7'; }
+    else if (eat(/^13/)) { if (seventh == null) { seventh = 10; sevLbl = '\u266d7'; } put(2, '9', true); put(9, '13'); }
+    else if (eat(/^11/)) { if (seventh == null) { seventh = 10; sevLbl = '\u266d7'; } put(2, '9', true); put(5, '11'); }
+    else if (eat(/^9/))  { if (seventh == null) { seventh = 10; sevLbl = '\u266d7'; } put(2, '9'); }
+    else if (eat(/^7/))  { if (seventh == null) { seventh = dim ? 9 : 10; sevLbl = dim ? '\u00b07' : '\u266d7'; } }
+    else if (eat(/^69|^6\/9/)) { put(9, '6'); put(2, '9'); }
+    else if (eat(/^6/))  { put(9, '6'); }
+    else if (eat(/^5(?=$)/)) { no3 = true; }
+    else if (eat(/^sus2/)) { third = 2; thirdLbl = '2'; }
+    else if (eat(/^sus4?/)) { third = 5; thirdLbl = '4'; }
+    else if (eat(/^(no|omit)3/)) { no3 = true; }
+    else if (eat(/^(no|omit)5/)) { no5 = true; }
+    else {
+      let t;
+      if ((t = eat(/^add(b|#)?(2|4|6|9|11|13)/))) {
+        const semiBase = { 2:2, 4:5, 6:9, 9:2, 11:5, 13:9 }[+t[2]];
+        put((semiBase + (t[1] === 'b' ? -1 : t[1] === '#' ? 1 : 0) + 12) % 12,
+            (t[1] === 'b' ? '\u266d' : t[1] === '#' ? '\u266f' : '') + t[2]);
+      } else if ((t = eat(/^(b|#)(5|9|11|13)/))) {
+        const flat = t[1] === 'b';
+        if (t[2] === '5')       { fifth = flat ? 6 : 8; fifthLbl = (flat ? '\u266d' : '\u266f') + '5'; }
+        else if (t[2] === '9')  put(flat ? 1 : 3, (flat ? '\u266d' : '\u266f') + '9');
+        else if (t[2] === '11') put(flat ? 4 : 6, (flat ? '\u266d' : '\u266f') + '11');
+        else                    put(flat ? 8 : 10, (flat ? '\u266d' : '\u266f') + '13');
+      } else {
+        throw new Error('Fragment non reconnu : \u00ab\u202f' + s + '\u202f\u00bb');
+      }
+    }
+  }
+
+  // assemblage
+  const labels = { 0: '1' };
+  const set = new Set([0]);
+  if (!no3 && third != null)  { set.add(third);  labels[third]  = thirdLbl; }
+  if (!no5 && fifth != null)  { set.add(fifth);  labels[fifth]  = fifthLbl; }
+  if (seventh != null)        { set.add(seventh); labels[seventh] = labels[seventh] || sevLbl; }
+  for (const semi of extras.keys()) {
+    if (!set.has(semi)) { set.add(semi); labels[semi] = extraLbl.get(semi); }
+  }
+  const intervals = [...set].sort((a, b) => a - b);
+  if (intervals.length < 2) throw new Error('Accord incomplet : il faut au moins deux notes.');
+
+  const opt = [];
+  if (!no5 && fifth === 7 && set.has(7) && labels[7] === '5') opt.push(7);
+  for (const semi of optExtra) if (set.has(semi) && labels[semi] === extraLbl.get(semi)) opt.push(semi);
+
+  // basse imposée : doit appartenir à l'accord
+  let bassIv = null;
+  if (bassPc != null) {
+    bassIv = (bassPc - rootPc + 12) % 12;
+    if (!set.has(bassIv)) {
+      throw new Error('La basse demand\u00e9e n\u2019appartient pas \u00e0 l\u2019accord.');
+    }
+  }
+
+  return { rootPc, sym, intervals, labels, opt, bassIv };
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { NOTE_NAMES, INTERVAL_LABELS, CHORD_TYPES, TUNINGS, findVoicings, MUTE };
+  module.exports = { NOTE_NAMES, INTERVAL_LABELS, CHORD_TYPES, TUNINGS, findVoicings, parseChord, MUTE };
 }
