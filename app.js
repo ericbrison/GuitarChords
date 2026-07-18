@@ -20,7 +20,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v16';
+const APP_VERSION = 'v17';
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
@@ -646,24 +646,24 @@ function refreshScales() {
 
   $('neckCanvas').innerHTML = neckSVG(sc, tuning);
   fitNeckFrame();
-  clampNeck();
-  applyNeckTransform();
+  applyNeckScale();
   renderSavedScalesList();
   pushHash();
 }
 
 /* --- pinch-to-zoom du manche ---
-   Pincement à deux doigts (centré sur le geste), déplacement au doigt
-   une fois zoomé, double-tap pour basculer, Ctrl+molette sur desktop.
-   À l'échelle 1, touch-action pan-y laisse la page défiler. */
-const neckZ = { k: 1, tx: 0, ty: 0 };
+   Le zoom redimensionne le SVG (vectoriel, net à toute échelle) et le
+   déplacement passe par le défilement natif du conteneur : pas de calque
+   transformé géant (tronqué par la limite de texture GPU des mobiles).
+   touch-action pan-x pan-y : un doigt = scroll natif, deux doigts = pincement. */
+const neckZ = { k: 1 };
 let neckDragged = false;
 const neckPtrs = new Map();
 let pinch0 = null, lastTap = { t: 0, x: 0, y: 0 };
 
 function neckBase() {
   const svg = $('neckCanvas').querySelector('svg');
-  return svg ? { w: +svg.getAttribute('width'), h: +svg.getAttribute('height') } : null;
+  return svg ? { svg, w: +svg.getAttribute('width'), h: +svg.getAttribute('height') } : null;
 }
 
 function fitNeckFrame() {
@@ -671,42 +671,35 @@ function fitNeckFrame() {
   if (b) $('neckWrap').style.height = b.h + 'px';
 }
 
-function clampNeck() {
+function applyNeckScale() {
   const b = neckBase();
   if (!b) return;
-  const vw = $('neckWrap').clientWidth || b.w, vh = b.h;
-  neckZ.k = Math.min(4, Math.max(1, neckZ.k));
-  const cw = b.w * neckZ.k, ch = b.h * neckZ.k;
-  neckZ.tx = cw <= vw ? (vw - cw) / 2 : Math.min(0, Math.max(vw - cw, neckZ.tx));
-  neckZ.ty = ch <= vh ? 0 : Math.min(0, Math.max(vh - ch, neckZ.ty));
-}
-
-function applyNeckTransform() {
-  const cv = $('neckCanvas');
-  cv.style.transform = 'translate(' + neckZ.tx + 'px,' + neckZ.ty + 'px) scale(' + neckZ.k + ')';
-  cv.style.touchAction = neckZ.k > 1.01 ? 'none' : 'pan-y';
+  b.svg.style.width = (b.w * neckZ.k) + 'px';
+  b.svg.style.height = (b.h * neckZ.k) + 'px';
   $('neckWrap').classList.toggle('zoomed', neckZ.k > 1.01);
 }
 
-function neckZoomTo(k, px, py) {
-  // conserve le point (px,py) du cadre sous le doigt
-  const cx = (px - neckZ.tx) / neckZ.k, cy = (py - neckZ.ty) / neckZ.k;
-  neckZ.k = k;
-  neckZ.tx = px - cx * neckZ.k;
-  neckZ.ty = py - cy * neckZ.k;
-  clampNeck();
-  applyNeckTransform();
+function neckZoomTo(k, ax, ay) {
+  const wrap = $('neckWrap');
+  const k0 = neckZ.k;
+  neckZ.k = Math.min(4, Math.max(1, k));
+  const rx = (wrap.scrollLeft + ax) / k0, ry = (wrap.scrollTop + ay) / k0;
+  applyNeckScale();
+  wrap.scrollLeft = rx * neckZ.k - ax;   // le point visé reste sous le doigt
+  wrap.scrollTop = ry * neckZ.k - ay;
 }
 
 function neckPointerDown(e) {
-  neckPtrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  neckPtrs.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
   neckDragged = false;
   if (neckPtrs.size === 2) {
+    const wrap = $('neckWrap'), rect = wrap.getBoundingClientRect();
     const [a, b] = [...neckPtrs.values()];
     pinch0 = {
-      d: Math.hypot(a.x - b.x, a.y - b.y),
-      k: neckZ.k, tx: neckZ.tx, ty: neckZ.ty,
-      mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2,
+      d: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      k: neckZ.k,
+      rx: (wrap.scrollLeft + (a.x + b.x) / 2 - rect.left) / neckZ.k,
+      ry: (wrap.scrollTop + (a.y + b.y) / 2 - rect.top) / neckZ.k,
     };
   }
 }
@@ -718,28 +711,27 @@ function neckPointerMove(e) {
 
   if (neckPtrs.size === 2 && pinch0) {
     p.x = e.clientX; p.y = e.clientY;
+    const wrap = $('neckWrap'), rect = wrap.getBoundingClientRect();
     const [a, b] = [...neckPtrs.values()];
-    const d = Math.hypot(a.x - b.x, a.y - b.y);
-    const rect = $('neckWrap').getBoundingClientRect();
     const mx = (a.x + b.x) / 2 - rect.left, my = (a.y + b.y) / 2 - rect.top;
-    const k = Math.min(4, Math.max(1, pinch0.k * d / (pinch0.d || 1)));
-    const cx = (pinch0.mx - rect.left - pinch0.tx) / pinch0.k;
-    const cy = (pinch0.my - rect.top - pinch0.ty) / pinch0.k;
-    neckZ.k = k;
-    neckZ.tx = mx - cx * k;
-    neckZ.ty = my - cy * k;
-    clampNeck(); applyNeckTransform();
+    neckZ.k = Math.min(4, Math.max(1, pinch0.k * Math.hypot(a.x - b.x, a.y - b.y) / pinch0.d));
+    applyNeckScale();
+    wrap.scrollLeft = pinch0.rx * neckZ.k - mx;
+    wrap.scrollTop = pinch0.ry * neckZ.k - my;
     neckDragged = true;
+    e.preventDefault();
     return;
   }
 
-  if (neckPtrs.size === 1 && (Math.abs(dx) > 6 || Math.abs(dy) > 6 || neckDragged)) {
+  // à la souris, glisser déplace la vue (au doigt, le scroll natif s'en charge)
+  if (neckPtrs.size === 1 && p.type === 'mouse' &&
+      (neckDragged || Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
     p.x = e.clientX; p.y = e.clientY;
-    neckZ.tx += dx;
-    if (neckZ.k > 1.01) neckZ.ty += dy;
-    clampNeck(); applyNeckTransform();
+    const wrap = $('neckWrap');
+    wrap.scrollLeft -= dx;
+    wrap.scrollTop -= dy;
     neckDragged = true;
-    try { $('neckWrap').setPointerCapture(e.pointerId); } catch (err) {}
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
   }
 }
 

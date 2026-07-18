@@ -522,14 +522,12 @@ footer.app {
 
 .neck-wrap {
   margin: 6px 16px 0;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
+  touch-action: pan-x pan-y;   /* 1 doigt = défilement natif, 2 = pincement */
+  overscroll-behavior: contain;
 }
-.neck-canvas {
-  transform-origin: 0 0;
-  will-change: transform;
-  width: max-content;
-}
+.neck-canvas { width: max-content; margin: 0 auto; }
 .neck-wrap.zoomed { cursor: grab; }
 .neck-wrap svg { display: block; }
 .neck-hint {
