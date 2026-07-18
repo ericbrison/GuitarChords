@@ -239,7 +239,7 @@ function buildControls() {
     }
     syncSliderFromState();
     buildFretSlider();
-    refresh();
+    refreshCurrent();
   });
 
   $('freeGo').addEventListener('click', applyFreeChord);
@@ -371,7 +371,7 @@ function sliderVals() {
 function buildFretSlider() {
   const N = state.maxFret;
   $('fretMinR').max = N; $('fretMaxR').max = N;
-  const marks = [1, 3, 5, 7, 9, 12, 15, 17, 19].filter(f => f <= N);
+  const marks = [1, 3, 5, 7, 9, 12, 15, 17, 19, 22].filter(f => f <= N);
   $('rangeScale').innerHTML = marks.map(f =>
     '<span style="left:' + ((f - 1) / (N - 1) * 100) + '%">' +
     (f === 12 ? '\u2022' + f + '\u2022' : f) + '</span>').join('');
@@ -678,7 +678,7 @@ function neckSVG(scale, tuning) {
   s2.push(rectP(x0, x0 + N * fw, Tfirst - 8, Tlast + 8, 4, DIAG.board));
 
   // repères
-  const INLAYS = [3, 5, 7, 9, 15, 17, 19];
+  const INLAYS = [3, 5, 7, 9, 15, 17, 19, 21];
   const midT = (Tfirst + Tlast) / 2;
   const dotAt = (L, T) => { const [x, y] = P(L, T);
     return '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + DIAG.inlay + '"/>'; };
@@ -691,7 +691,7 @@ function neckSVG(scale, tuning) {
   const numT = vert ? Tfirst - 22 : Tlast + 22;
   for (let f = 1; f <= N; f++) {
     s2.push(rectP(x0 + f * fw - 1, x0 + f * fw + 1, Tfirst - 8, Tlast + 8, 1, DIAG.fret));
-    if ([3, 5, 7, 9, 12, 15, 17, 19].includes(f)) {
+    if ([3, 5, 7, 9, 12, 15, 17, 19, 21].includes(f)) {
       const [x, y] = P(caseL(f), numT);
       s2.push('<text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle"' +
         ' font-family="ui-monospace,Menlo,monospace" font-size="' + (big ? 13 : 11) + '"' +
