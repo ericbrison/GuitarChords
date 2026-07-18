@@ -22,7 +22,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v28';
+const APP_VERSION = 'v29';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
@@ -215,7 +215,10 @@ function pushHash() {
 /* --- contrôles --- */
 function buildControls() {
   const rs = $('rootSel');
-  NOTE_NAMES.forEach((n, i) => rs.add(new Option(n, String(i))));
+  for (let i = 0; i < 12; i++) {
+    const pc = (9 + i) % 12;                    // de A à G♯
+    rs.add(new Option(NOTE_NAMES[pc], String(pc)));
+  }
   rs.value = String(state.root);
   rs.addEventListener('change', () => { state.root = +rs.value; refresh(); });
 
@@ -321,7 +324,10 @@ function buildControls() {
 
   // contrôles de l'outil gammes
   const sr = $('scaleRoot');
-  NOTE_NAMES.forEach((n, i) => sr.add(new Option(n, String(i))));
+  for (let i = 0; i < 12; i++) {
+    const pc = (9 + i) % 12;                    // de A à G♯
+    sr.add(new Option(NOTE_NAMES[pc], String(pc)));
+  }
   sr.value = String(state.root);
   sr.addEventListener('change', () => { state.root = +sr.value; refreshScales(); });
 
@@ -464,8 +470,9 @@ function rebuildBassSelect(chord) {
   const sel = $('optBass');
   sel.innerHTML = '';
   sel.add(new Option('—', ''));   // rien d'imposé
-  for (let iv = 0; iv < 12; iv++) {
-    sel.add(new Option(NOTE_NAMES[(state.root + iv) % 12], String(iv)));
+  for (let i = 0; i < 12; i++) {
+    const pc = (9 + i) % 12;                    // de A à G♯
+    sel.add(new Option(NOTE_NAMES[pc], String((pc - state.root + 12) % 12)));
   }
   sel.value = state.bass == null ? '' : String(state.bass);
 }

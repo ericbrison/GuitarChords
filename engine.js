@@ -2,7 +2,7 @@
    Moteur de voicings — vanilla JS, aucune dépendance
    ============================================================ */
 
-const NOTE_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
 
 const INTERVAL_LABELS = {
   0:'1', 1:'♭9', 2:'9', 3:'♭3', 4:'3', 5:'4', 6:'♭5',
