@@ -16,10 +16,10 @@ const state = {
   neckView: 'h-left',   // orientation du manche : h-left | h-right | v-top | v-bottom
   omit5: true,
   labels: 'intervals',
-  maxFret: 15,
+  maxFret: 22,
 };
 
-const APP_VERSION = 'v14';
+const APP_VERSION = 'v15';
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
@@ -239,8 +239,9 @@ function buildControls() {
       state.fretMax = state.maxFret;
       if (state.fretMin > state.maxFret) state.fretMin = state.fretMax = null;
     }
-    syncSliderFromState();
     buildFretSlider();
+    syncSliderFromState();
+    updateSliderUI();
     refreshCurrent();
   });
 
@@ -258,8 +259,9 @@ function buildControls() {
     rebuildTypeSelect(); renderSavedList(); refresh();
   });
 
+  buildFretSlider();          // pose max avant les valeurs (sinon écrêtage)
   syncSliderFromState();
-  buildFretSlider();
+  updateSliderUI();
   for (const id of ['fretMinR', 'fretMaxR']) {
     $(id).addEventListener('input', updateSliderUI);
     $(id).addEventListener('change', commitSlider);
