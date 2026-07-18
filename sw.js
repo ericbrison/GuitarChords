@@ -15,7 +15,11 @@ const ASSETS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(VERSION)
+      // cache:'reload' contourne le cache HTTP : les fichiers mis en cache
+      // sont toujours ceux fraîchement déployés, jamais une version panachée
+      .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
 });
 

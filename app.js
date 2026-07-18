@@ -941,5 +941,15 @@ refreshCurrent();
 if (state.tool === 'scales') refresh();   // pré-rendu de l'outil accords en arrière-plan
 
 if ('serviceWorker' in navigator) {
-  try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+  try {
+    navigator.serviceWorker.register('sw.js');
+    // quand une nouvelle version prend la main, recharger une fois
+    // pour servir immédiatement les fichiers frais
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
+  } catch (e) {}
 }
