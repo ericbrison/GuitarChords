@@ -522,10 +522,17 @@ footer.app {
 
 .neck-wrap {
   margin: 6px 16px 0;
-  overflow: auto;
+  /* sans zoom : seul l'axe du manche défile ici, la page garde le vertical
+     (pas d'overscroll-contain : les gestes non captés remontent à la page) */
+  overflow-x: auto;
+  overflow-y: hidden;
   position: relative;
-  touch-action: pan-x pan-y;   /* 1 doigt = défilement natif, 2 = pincement */
-  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;   /* 2 doigts = pincement (géré par l'app) */
+}
+.neck-wrap.zoomed {
+  overflow: auto;              /* zoomé : le manche défile dans les deux axes */
+  outline: 1.5px solid var(--brass-deep);
+  border-radius: 10px;
 }
 .neck-canvas { width: max-content; margin: 0 auto; }
 .neck-wrap.zoomed { cursor: grab; }
