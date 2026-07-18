@@ -6,10 +6,44 @@ const state = {
   type: 'maj7',
   tuning: 'guitar-std',
   bass: 'all',          // 'all' ou intervalle imposé à la basse (0 = fondamentale)
+  theme: 'auto',
   omit5: true,
   labels: 'intervals',
   maxFret: 15,
 };
+
+/* --- thème clair / sombre / auto --- */
+const THEME_KEY = 'guitarchords.theme';
+const DIAG_THEMES = {
+  dark: {
+    board: '#262B33', fret: '#4A5160', nut: '#E8E4DA', string: '#6B7280',
+    inlay: '#3C434F', mute: '#7A8089', openBg: '#171310',
+    num: '#E8E4DA', dotStroke: '#12151A', barre: '#E8E4DA',
+  },
+  light: {
+    board: '#EFEAE0', fret: '#B9B2A2', nut: '#332E26', string: '#9A937F',
+    inlay: '#DAD3C4', mute: '#8A8375', openBg: '#FDFBF6',
+    num: '#4A4438', dotStroke: 'rgba(0,0,0,.28)', barre: '#332E26',
+  },
+};
+let DIAG = DIAG_THEMES.dark;
+const mqLight = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+
+function resolvedTheme() {
+  if (state.theme === 'light' || state.theme === 'dark') return state.theme;
+  return mqLight && mqLight.matches ? 'light' : 'dark';
+}
+function applyTheme(rerender) {
+  const t = resolvedTheme();
+  document.documentElement.dataset.theme = t;
+  DIAG = DIAG_THEMES[t];
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === 'light' ? '#F4EFE6' : '#171310';
+  if (rerender) refresh();
+}
+if (mqLight && mqLight.addEventListener) {
+  mqLight.addEventListener('change', () => { if (state.theme === 'auto') applyTheme(true); });
+}
 
 /* couleur par degré chromatique : [fond, texte] — utilisée pour les
    intervalles (relatifs à la fondamentale) ou les notes (absolues) */
@@ -35,11 +69,17 @@ const BATCH = 24;
 let voicings = [];
 let rendered = 0;
 let curChord = null;   // objet accord courant (prédéfini, libre ou enregistré)
+let curPcs = new Map(); // pc -> intervalle, accord + basse étrangère éventuelle
 
 /* --- accords enregistrés (localStorage, indisponible dans certains aperçus) --- */
-const LS_KEY = 'manche.chords';
+const LS_KEY = 'guitarchords.chords';
 let savedChords = [];
-try { savedChords = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch (e) {}
+try {
+  savedChords = JSON.parse(localStorage.getItem(LS_KEY) ||
+                localStorage.getItem('manche.chords') || '[]');  // migration ancien nom
+  const th = localStorage.getItem(THEME_KEY);
+  if (th === 'light' || th === 'dark' || th === 'auto') state.theme = th;
+} catch (e) {}
 function persistSaved() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(savedChords)); return true; }
   catch (e) { return false; }
@@ -115,6 +155,12 @@ function buildControls() {
   $('gearBtn').addEventListener('click', () => {
     const open = $('options').classList.toggle('open');
     $('gearBtn').setAttribute('aria-expanded', String(open));
+  });
+  $('optTheme').value = state.theme;
+  $('optTheme').addEventListener('change', e => {
+    state.theme = e.target.value;
+    try { localStorage.setItem(THEME_KEY, state.theme); } catch (err) {}
+    applyTheme(true);
   });
   $('optBass').addEventListener('change', e => {
     state.bass = e.target.value === 'all' ? 'all' : +e.target.value;
@@ -214,15 +260,15 @@ function saveCurrentChord() {
 
 function rebuildBassSelect(chord) {
   const sel = $('optBass');
-  if (typeof state.bass === 'number' && !chord.intervals.includes(state.bass)) {
-    state.bass = 'all';
-  }
   sel.innerHTML = '';
   sel.add(new Option('Toutes (renversements inclus)', 'all'));
-  for (const iv of chord.intervals) {
+  for (let iv = 0; iv < 12; iv++) {
     const note = NOTE_NAMES[(state.root + iv) % 12];
+    const inChord = chord.intervals.includes(iv);
     const lbl = (chord.labels && chord.labels[iv]) || INTERVAL_LABELS[iv];
-    sel.add(new Option(note + ' — ' + (iv === 0 ? 'fondamentale' : 'degré ' + lbl), String(iv)));
+    const txt = note + ' — ' + (iv === 0 ? 'fondamentale'
+      : inChord ? 'degré ' + lbl : 'hors accord (' + lbl + ')');
+    sel.add(new Option(txt, String(iv)));
   }
   sel.value = typeof state.bass === 'number' ? String(state.bass) : 'all';
 }
@@ -235,6 +281,11 @@ function refresh() {
   rebuildBassSelect(chord);
   const bassIv = typeof state.bass === 'number' ? state.bass : null;
 
+  curPcs = new Map();
+  chord.intervals.forEach(iv => curPcs.set((state.root + iv) % 12, iv));
+  const foreignBass = bassIv != null && !chord.intervals.includes(bassIv);
+  if (foreignBass) curPcs.set((state.root + bassIv) % 12, bassIv);
+
   voicings = findVoicings(state.root, chord, tuning, {
     maxFret: state.maxFret,
     omit5: state.omit5,
@@ -245,16 +296,19 @@ function refresh() {
   const slash = bassIv != null && bassIv !== 0
     ? '<span class="slash">/' + NOTE_NAMES[(state.root + bassIv) % 12] + '</span>' : '';
   $('chordName').innerHTML = name + (chord.sym ? '<sup>' + chord.sym + '</sup>' : '') + slash;
-  $('chordTones').innerHTML = chord.intervals.map(iv => {
+  const toneChip = (iv, extra) => {
     const pc = (state.root + iv) % 12;
     const lbl = (chord.labels && chord.labels[iv]) || INTERVAL_LABELS[iv];
     const [bg, fg] = toneColor(iv, pc);
     return '<span class="tone"><i style="background:' + bg + ';color:' + fg + '">' +
-           lbl + '</i>' + NOTE_NAMES[pc] + '</span>';
-  }).join('');
+           lbl + '</i>' + NOTE_NAMES[pc] + (extra || '') + '</span>';
+  };
+  $('chordTones').innerHTML =
+    chord.intervals.map(iv => toneChip(iv)).join('') +
+    (foreignBass ? toneChip(bassIv, ' <small>basse</small>') : '');
   $('chordCount').innerHTML = '<b>' + voicings.length + '</b> position' + (voicings.length > 1 ? 's' : '');
 
-  document.title = name + chord.sym + ' — Manche';
+  document.title = name + chord.sym + ' — Guitar Chords';
   renderSavedList();
   pushHash();
 
@@ -332,7 +386,7 @@ function diagramSVG(v, tuning) {
 
   // touche neutre sombre : les pastilles colorées portent l'information
   s2.push('<rect x="' + (LEFT - 7) + '" y="' + (TOP - 2) + '" width="' + (gridW + 14) +
-    '" height="' + (NROWS * fretH + 4) + '" rx="4" fill="#262B33"/>');
+    '" height="' + (NROWS * fretH + 4) + '" rx="4" fill="' + DIAG.board + '"/>');
 
   // repères de cases (3,5,7,9,15,17… — double au 12)
   const INLAYS = [3, 5, 7, 9, 15, 17, 19, 21];
@@ -340,35 +394,35 @@ function diagramSVG(v, tuning) {
     const fret = base + r;
     const cy = fy(r) + fretH / 2;
     if (fret === 12) {
-      s2.push('<circle cx="' + (LEFT + gridW * .3) + '" cy="' + cy + '" r="3.2" fill="#3C434F"/>',
-              '<circle cx="' + (LEFT + gridW * .7) + '" cy="' + cy + '" r="3.2" fill="#3C434F"/>');
+      s2.push('<circle cx="' + (LEFT + gridW * .3) + '" cy="' + cy + '" r="3.2" fill="' + DIAG.inlay + '"/>',
+              '<circle cx="' + (LEFT + gridW * .7) + '" cy="' + cy + '" r="3.2" fill="' + DIAG.inlay + '"/>');
     } else if (INLAYS.includes(fret)) {
-      s2.push('<circle cx="' + (LEFT + gridW / 2) + '" cy="' + cy + '" r="3.2" fill="#3C434F"/>');
+      s2.push('<circle cx="' + (LEFT + gridW / 2) + '" cy="' + cy + '" r="3.2" fill="' + DIAG.inlay + '"/>');
     }
   }
 
   // frettes
   for (let r = 1; r <= NROWS; r++) {
     s2.push('<rect x="' + (LEFT - 7) + '" y="' + (fy(r) - 1) + '" width="' + (gridW + 14) +
-      '" height="2" rx="1" fill="#4A5160"/>');
+      '" height="2" rx="1" fill="' + DIAG.fret + '"/>');
   }
   // sillet ou numéro de case
   if (base === 1) {
     s2.push('<rect x="' + (LEFT - 7) + '" y="' + (TOP - 4.5) + '" width="' + (gridW + 14) +
-      '" height="5" rx="1.5" fill="#E8E4DA"/>');
+      '" height="5" rx="1.5" fill="' + DIAG.nut + '"/>');
   } else {
     s2.push('<rect x="' + (LEFT - 7) + '" y="' + (TOP - 1.2) + '" width="' + (gridW + 14) +
-      '" height="2.4" rx="1.2" fill="#4A5160"/>');
+      '" height="2.4" rx="1.2" fill="' + DIAG.fret + '"/>');
     s2.push('<text x="' + (LEFT - 12) + '" y="' + (TOP + fretH / 2 + 4) +
       '" text-anchor="end" font-family="ui-monospace,Menlo,monospace" font-size="11"' +
-      ' font-weight="700" fill="#E8E4DA">' + base + '</text>');
+      ' font-weight="700" fill="' + DIAG.num + '">' + base + '</text>');
   }
 
   // cordes
   for (let s = 0; s < nS; s++) {
     const w = 2.2 - 1.4 * (s / (nS - 1));
     s2.push('<rect x="' + (sx(s) - w / 2) + '" y="' + (TOP - 2) + '" width="' + w +
-      '" height="' + (NROWS * fretH + 4) + '" fill="#6B7280"/>');
+      '" height="' + (NROWS * fretH + 4) + '" fill="' + DIAG.string + '"/>');
   }
 
   // barré : bande claire discrète derrière les pastilles
@@ -376,30 +430,28 @@ function diagramSVG(v, tuning) {
     const y = fy(v.barre.fret - base) + fretH / 2;
     s2.push('<rect x="' + (sx(v.barre.from) - 7.5) + '" y="' + (y - 7) +
       '" width="' + (sx(v.barre.to) - sx(v.barre.from) + 15) +
-      '" height="14" rx="7" fill="#E8E4DA" opacity=".30"/>');
+      '" height="14" rx="7" fill="' + DIAG.barre + '" opacity=".30"/>');
   }
 
   // marqueurs ✕ / ○ et pastilles colorées
-  const chordPcs = new Map();
-  curChord.intervals.forEach(iv => chordPcs.set((state.root + iv) % 12, iv));
 
   for (let s = 0; s < nS; s++) {
     const f = v.frets[s], x = sx(s);
     if (f === MUTE) {
       s2.push('<text x="' + x + '" y="' + (TOP - 8) + '" text-anchor="middle" font-size="12"' +
-        ' font-weight="700" font-family="system-ui" fill="#7A8089">\u2715</text>');
+        ' font-weight="700" font-family="system-ui" fill="' + DIAG.mute + '">\u2715</text>');
       continue;
     }
     const midi = tuning.midi[s] + f;
     const pc = midi % 12;
-    const iv = chordPcs.get(pc);
+    const iv = curPcs.get(pc);
     const label = state.labels === 'notes' ? NOTE_NAMES[pc]
       : ((curChord.labels && curChord.labels[iv]) || INTERVAL_LABELS[iv]);
     const [bg, fg] = toneColor(iv, pc);
     const small = label.length > 2 ? 7.4 : label.length > 1 ? 8.2 : 9.5;
     if (f === 0) {
       // corde à vide : anneau coloré au-dessus du sillet
-      s2.push('<circle cx="' + x + '" cy="' + (TOP - 13) + '" r="7.4" fill="#171310"' +
+      s2.push('<circle cx="' + x + '" cy="' + (TOP - 13) + '" r="7.4" fill="' + DIAG.openBg + '"' +
         ' stroke="' + bg + '" stroke-width="2.4"/>');
       s2.push('<text x="' + x + '" y="' + (TOP - 13 + small * .36) + '" text-anchor="middle"' +
         ' font-size="' + (small - 1) + '" font-weight="700"' +
@@ -407,7 +459,7 @@ function diagramSVG(v, tuning) {
     } else {
       const cy = fy(f - base) + fretH / 2;
       s2.push('<circle cx="' + x + '" cy="' + cy + '" r="9.4" fill="' + bg + '"' +
-        ' stroke="#12151A" stroke-width="1"/>');
+        ' stroke="' + DIAG.dotStroke + '" stroke-width="1"/>');
       s2.push('<text x="' + x + '" y="' + (cy + small * .36) + '" text-anchor="middle"' +
         ' font-size="' + small + '" font-weight="700"' +
         ' font-family="ui-monospace,Menlo,monospace" fill="' + fg + '">' + label + '</text>');
@@ -477,6 +529,7 @@ function onCardTap(e) {
    Démarrage + PWA
    ============================================================ */
 buildControls();
+applyTheme(false);
 refresh();
 
 if ('serviceWorker' in navigator) {

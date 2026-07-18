@@ -65,3 +65,18 @@ const pe = parseChord('CM7/E');
 const ve = findVoicings(pe.rootPc, pe, TUNINGS[0], { bassIv: pe.bassIv });
 console.log('CM7/E →', ve.length, 'positions, toutes basse E :',
   ve.every(o => o.bassIv === 4));
+
+// basse hors accord : C/D
+const pd = parseChord('C/D');
+console.log('C/D → bassIv', pd.bassIv);
+const vd = findVoicings(pd.rootPc, pd, TUNINGS[0], { bassIv: pd.bassIv });
+const okBass = vd.every(o => o.bassIv === 2);
+const fmt2 = f => f.map(x=>x<0?'x':x).join('-');
+console.log('C/D →', vd.length, 'positions, toutes basse D :', okBass, '; ex:', vd[0] && fmt2(vd[0].frets));
+// la note D ne doit apparaître qu'à la basse
+const { MUTE } = require('./engine.js');
+const noInnerD = vd.every(o => {
+  const played = o.frets.map((f,s)=>f===MUTE?null:(TUNINGS[0].midi[s]+f)%12).filter(x=>x!==null);
+  return played.slice(1).every(pc => pc !== 2);
+});
+console.log('D uniquement à la basse :', noInnerD);

@@ -1,4 +1,4 @@
-# Manche — positions d'accords
+# Guitar Chords
 
 Application web pour guitaristes et bassistes : affiche **toutes les positions
 jouables** d'un accord sur le manche (ex. CM7), avec diagrammes et écoute au

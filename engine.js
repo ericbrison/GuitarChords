@@ -56,6 +56,12 @@ function findVoicings(rootPc, chordType, tuning, opts = {}) {
   const pcToInterval = new Map();
   for (const iv of chordType.intervals) pcToInterval.set((rootPc + iv) % 12, iv);
 
+  // basse imposée hors accord (ex. C/D) : la note est ajoutée aux notes
+  // autorisées, mais ne pourra apparaître qu'à la basse (contrôle plus bas)
+  const wantBassPc = opts.bassIv != null ? (rootPc + opts.bassIv) % 12 : null;
+  const foreignBass = wantBassPc != null && !pcToInterval.has(wantBassPc);
+  if (foreignBass) pcToInterval.set(wantBassPc, opts.bassIv);
+
   const omittable = new Set(omit5 ? (chordType.opt || []) : []);
   const mustHave  = chordType.intervals.filter(iv => !omittable.has(iv));
   const minNotes  = Math.max(3, mustHave.length);
@@ -89,7 +95,14 @@ function findVoicings(rootPc, chordType, tuning, opts = {}) {
 
     const played = [];
     for (let s = 0; s < nStrings; s++) if (frets[s] !== MUTE) played.push(s);
-    if (played.length < minNotes) return;
+    if (played.length < minNotes + (foreignBass ? 1 : 0)) return;
+
+    // une basse étrangère à l'accord ne peut sonner qu'à la basse
+    if (foreignBass) {
+      for (let k = 1; k < played.length; k++) {
+        if ((tuning.midi[played[k]] + frets[played[k]]) % 12 === wantBassPc) return;
+      }
+    }
 
     // cordes étouffées internes
     let interiorMutes = 0;
@@ -274,14 +287,9 @@ function parseChord(input) {
   if (!no5 && fifth === 7 && set.has(7) && labels[7] === '5') opt.push(7);
   for (const semi of optExtra) if (set.has(semi) && labels[semi] === extraLbl.get(semi)) opt.push(semi);
 
-  // basse imposée : doit appartenir à l'accord
+  // basse imposée : n'importe quelle note, même hors accord (ex. C/D)
   let bassIv = null;
-  if (bassPc != null) {
-    bassIv = (bassPc - rootPc + 12) % 12;
-    if (!set.has(bassIv)) {
-      throw new Error('La basse demand\u00e9e n\u2019appartient pas \u00e0 l\u2019accord.');
-    }
-  }
+  if (bassPc != null) bassIv = (bassPc - rootPc + 12) % 12;
 
   return { rootPc, sym, intervals, labels, opt, bassIv };
 }
