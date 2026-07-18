@@ -20,7 +20,7 @@ const CHORD_TYPES = [
   { id:'dim',   sym:'dim',   label:'Diminué',       intervals:[0,3,6] },
   { id:'dim7',  sym:'dim7',  label:'Diminué 7',     intervals:[0,3,6,9] },
   { id:'aug',   sym:'aug',   label:'Augmenté',      intervals:[0,4,8] },
-  { id:'sus2',  sym:'sus2',  label:'Sus2',          intervals:[0,2,7] },
+  { id:'sus2',  sym:'sus2',  label:'Sus2',          intervals:[0,2,7], labels:{2:'2'} },
   { id:'sus4',  sym:'sus4',  label:'Sus4',          intervals:[0,5,7] },
   { id:'7sus4', sym:'7sus4', label:'7 sus4',        intervals:[0,5,7,10], opt:[7] },
   { id:'6',     sym:'6',     label:'Sixte',         intervals:[0,4,7,9],  opt:[7] },

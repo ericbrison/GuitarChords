@@ -22,7 +22,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v23';
+const APP_VERSION = 'v24';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
