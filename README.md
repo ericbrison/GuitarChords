@@ -92,6 +92,14 @@ Le bouton ★ enregistre le **type** d'accord (pas la fondamentale) : un
 transpose sur les 12 fondamentales. Stockage en `localStorage` (local à
 l'appareil, survit hors-ligne). Gestion/suppression dans le panneau ⚙.
 
+## Position sur le manche
+
+Le ruban de cases sous les contrôles filtre les positions : un tap sur une
+case sélectionne une position de 4 cases (case 5 → cases 5–8), un second tap
+ajuste la fin de la plage, ✕ revient au manche entier. Les cordes à vide ne
+sont admises que si la plage démarre au sillet. La plage est portée par
+l'URL (`#fm=5&fx=8`).
+
 ## État partageable
 
 La sélection est reflétée dans l'URL : `#r=0&t=maj7&a=guitar-std` (fondamentale, type, accordage) ou

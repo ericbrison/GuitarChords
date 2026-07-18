@@ -7,6 +7,8 @@ const state = {
   tuning: 'guitar-std',
   bass: 'all',          // 'all' ou intervalle imposé à la basse (0 = fondamentale)
   theme: 'auto',
+  fretMin: null,        // filtre de position : plage de cases [fretMin, fretMax]
+  fretMax: null,
   omit5: true,
   labels: 'intervals',
   maxFret: 15,
@@ -107,12 +109,14 @@ try {
     if (p.bassIv != null) state.bass = p.bassIv;
   }
   if (h.has('b')) state.bass = +h.get('b');
+  if (h.has('fm') && h.has('fx')) { state.fretMin = +h.get('fm'); state.fretMax = +h.get('fx'); }
 } catch (e) {}
 
 function pushHash() {
   try {
     const p = { r: state.root, t: state.type, a: state.tuning };
     if (typeof state.bass === 'number') p.b = state.bass;
+    if (state.fretMin != null) { p.fm = state.fretMin; p.fx = state.fretMax; }
     if (state.type === 'custom' || state.type.startsWith('saved:')) {
       delete p.t;
       p.c = NOTE_NAMES[state.root] + curChord.sym +
@@ -168,7 +172,15 @@ function buildControls() {
   });
   $('optOmit5').addEventListener('change', e => { state.omit5 = e.target.checked; refresh(); });
   $('optLabels').addEventListener('change', e => { state.labels = e.target.value; refresh(); });
-  $('optMaxFret').addEventListener('change', e => { state.maxFret = +e.target.value; refresh(); });
+  $('optMaxFret').addEventListener('change', e => {
+    state.maxFret = +e.target.value;
+    if (state.fretMax != null && state.fretMax > state.maxFret) {
+      state.fretMax = state.maxFret;
+      if (state.fretMin > state.maxFret) state.fretMin = state.fretMax = null;
+    }
+    buildFretbar();
+    refresh();
+  });
 
   $('freeGo').addEventListener('click', applyFreeChord);
   $('freeInput').addEventListener('keydown', e => {
@@ -183,6 +195,10 @@ function buildControls() {
     if (state.type === 'saved:' + b.dataset.del) state.type = 'maj';
     rebuildTypeSelect(); renderSavedList(); refresh();
   });
+
+  buildFretbar();
+  $('fretbar').addEventListener('click', onFretbarTap);
+  $('fretbarClear').addEventListener('click', clearFretFilter);
 
   $('moreBtn').addEventListener('click', renderBatch);
   $('results').addEventListener('click', onCardTap);
@@ -258,6 +274,66 @@ function saveCurrentChord() {
   refresh();
 }
 
+/* --- ruban de sélection de position sur le manche ---
+   1 tap : position de 4 cases à partir de la case touchée.
+   2e tap : ajuste la fin de la plage. Bouton ✕ : tout le manche. */
+let fretAnchor = null;
+
+function buildFretbar() {
+  const bar = $('fretbar');
+  bar.innerHTML = '';
+  const PIPS = [3, 5, 7, 9, 12, 15, 17, 19];
+  for (let f = 1; f <= state.maxFret; f++) {
+    const b = document.createElement('button');
+    b.className = 'fret-cell';
+    b.dataset.fret = f;
+    b.innerHTML = f + (PIPS.includes(f) ? '<span class="pip' + (f === 12 ? ' d' : '') + '"></span>' : '');
+    b.setAttribute('aria-label', 'Case ' + f);
+    bar.appendChild(b);
+  }
+  updateFretbarUI();
+}
+
+function onFretbarTap(e) {
+  const cell = e.target.closest('.fret-cell');
+  if (!cell) return;
+  const f = +cell.dataset.fret;
+  if (fretAnchor == null) {
+    fretAnchor = f;
+    state.fretMin = f;
+    state.fretMax = Math.min(f + 3, state.maxFret);
+  } else {
+    state.fretMin = Math.min(fretAnchor, f);
+    state.fretMax = Math.max(fretAnchor, f);
+    fretAnchor = null;
+  }
+  refresh();
+}
+
+function clearFretFilter() {
+  fretAnchor = null;
+  state.fretMin = state.fretMax = null;
+  refresh();
+}
+
+function updateFretbarUI() {
+  const { fretMin: a, fretMax: z } = state;
+  document.querySelectorAll('.fret-cell').forEach(c => {
+    const f = +c.dataset.fret;
+    c.classList.toggle('sel', a != null && f >= a && f <= z);
+  });
+  $('fretbarClear').hidden = a == null;
+  $('fretbarLabel').textContent = a == null
+    ? 'Tout le manche — touchez une case pour choisir une position'
+    : 'Cases ' + a + '–' + z + (fretAnchor != null
+        ? ' — touchez une autre case pour ajuster la fin' : '');
+  // rendre la sélection visible dans le ruban
+  const first = document.querySelector('.fret-cell.sel');
+  if (first && first.scrollIntoView) {
+    try { first.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
+  }
+}
+
 function rebuildBassSelect(chord) {
   const sel = $('optBass');
   sel.innerHTML = '';
@@ -292,6 +368,15 @@ function refresh() {
     bassIv,
   });
 
+  // filtre de position : frettes dans la plage, cordes à vide seulement
+  // si la plage commence au sillet
+  if (state.fretMin != null) {
+    const a = state.fretMin, z = state.fretMax;
+    voicings = voicings.filter(v => v.frets.every(f =>
+      f === MUTE || (f === 0 ? a <= 1 : f >= a && f <= z)));
+  }
+  updateFretbarUI();
+
   const name = NOTE_NAMES[state.root];
   const slash = bassIv != null && bassIv !== 0
     ? '<span class="slash">/' + NOTE_NAMES[(state.root + bassIv) % 12] + '</span>' : '';
@@ -317,7 +402,10 @@ function refresh() {
   if (voicings.length === 0) {
     $('results').innerHTML =
       '<div class="empty">Aucune position jouable pour <b>' + name + chord.sym +
-      '</b> avec ces réglages.<br>Essayez d’autoriser la quinte omissible ou les renversements.</div>';
+      '</b> avec ces réglages.<br>' +
+      (state.fretMin != null
+        ? 'Essayez d\u2019\u00e9largir la plage de cases (' + state.fretMin + '\u2013' + state.fretMax + ') ou de la r\u00e9initialiser (\u2715).'
+        : 'Essayez d\u2019autoriser les notes omissibles ou une autre basse.') + '</div>';
     $('moreWrap').hidden = true;
     return;
   }
