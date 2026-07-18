@@ -21,7 +21,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v21';
 
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';

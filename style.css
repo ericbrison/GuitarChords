@@ -579,3 +579,9 @@ footer.app {
   font: 12.5px var(--font-data);
   color: var(--muted);
 }
+
+
+/* appareils tactiles : le pincement suffit, on masque les boutons de zoom */
+@media (pointer: coarse) {
+  .neck-zoom { display: none; }
+}
