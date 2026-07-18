@@ -538,3 +538,7 @@ footer.app {
 :root[data-big="1"] .ivchip b { font-size: 17px; }
 :root[data-big="1"] .ivchip small { font-size: 12.5px; }
 :root[data-big="1"] .ivchip { height: 60px; }
+
+
+/* manche vertical : centré, la page défile naturellement */
+.neck-wrap svg { margin: 0 auto; }

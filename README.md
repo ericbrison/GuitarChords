@@ -81,7 +81,9 @@ extensibles dans `TUNINGS` (midi des cordes à vide, grave → aigu).
 
 L'onglet « Gammes » affiche une gamme sur tout le manche (manche horizontal,
 défilement tactile, notes colorées par degré ou par note, toucher une note la
-joue). 14 gammes prédéfinies (pentatoniques, blues, modes, mineures
+joue). Quatre orientations dans ⚙ : horizontal sillet à gauche ou à droite
+(gauchers), vertical sillet en haut ou en bas (pratique en portrait, la page
+défile le long du manche). 14 gammes prédéfinies (pentatoniques, blues, modes, mineures
 harmonique/mélodique, tons entiers). Les 12 pastilles de degrés permettent de
 personnaliser : sur la pentatonique mineure, toucher ♭5 ajoute la blue note.
 Le bouton ★ enregistre la gamme sous le nom saisi (localStorage, groupe

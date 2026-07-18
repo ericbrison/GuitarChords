@@ -13,6 +13,7 @@ const state = {
   tool: 'chords',       // outil actif : 'chords' | 'scales'
   scale: 'penta-maj',   // id de gamme, 'custom' ou 'savedscale:Nom'
   scaleCustom: null,    // { name, intervals } pour la gamme libre
+  neckView: 'h-left',   // orientation du manche : h-left | h-right | v-top | v-bottom
   omit5: true,
   labels: 'intervals',
   maxFret: 15,
@@ -90,6 +91,8 @@ try {
   const th = localStorage.getItem(THEME_KEY);
   if (th === 'light' || th === 'dark' || th === 'auto') state.theme = th;
   state.big = localStorage.getItem('guitarchords.big') === '1';
+  const nv = localStorage.getItem('guitarchords.neck');
+  if (['h-left', 'h-right', 'v-top', 'v-bottom'].includes(nv)) state.neckView = nv;
 } catch (e) {}
 function persistSaved() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(savedChords)); return true; }
@@ -207,6 +210,13 @@ function buildControls() {
     try { localStorage.setItem('guitarchords.big', state.big ? '1' : '0'); } catch (err) {}
     applyBig();
     refreshCurrent();
+  });
+
+  $('optNeck').value = state.neckView;
+  $('optNeck').addEventListener('change', e => {
+    state.neckView = e.target.value;
+    try { localStorage.setItem('guitarchords.neck', state.neckView); } catch (err) {}
+    if (state.tool === 'scales') refreshScales();
   });
 
   $('optTheme').value = state.theme;
@@ -626,66 +636,78 @@ function refreshScales() {
   pushHash();
 }
 
-/* manche complet horizontal : cordes graves en bas, sillet à gauche */
+/* manche complet, quatre orientations.
+   Géométrie en axes logiques : L le long du manche (0 = tête),
+   T en travers. La projection P place ensuite chaque point selon
+   l'orientation ; les textes restent toujours horizontaux. */
 function neckSVG(scale, tuning) {
   const nS = tuning.midi.length;
   const pcs = new Map();
   scale.intervals.forEach(iv => pcs.set((state.root + iv) % 12, iv));
 
   const big = state.big;
-  const fw = big ? 56 : 46;           // largeur d'une case
-  const sh = big ? 34 : 27;           // écart entre cordes
+  const vert = state.neckView.startsWith('v');
+  const flip = state.neckView === 'h-right' || state.neckView === 'v-bottom';
+  const fw = big ? 56 : 46;
+  const sh = big ? 34 : 27;
   const dotR = big ? 12 : 9.6;
   const openZone = fw * 0.75;
-  const TOPn = 14, BOTn = 24, LEFTn = 8;
   const N = state.maxFret;
-  const x0 = LEFTn + openZone;        // position du sillet
-  const W = x0 + N * fw + 12;
-  const H = TOPn + (nS - 1) * sh + BOTn;
-  const sy = s => TOPn + (nS - 1 - s) * sh;   // corde 0 (grave) en bas
-  const fx = f => x0 + f * fw;
+
+  const x0 = 8 + openZone;                 // position du sillet sur L
+  const Llen = x0 + N * fw + 12;
+  const Tfirst = vert ? 34 : 14;           // couloir des numéros : à gauche (vertical) / en bas (horizontal)
+  const Tlast = Tfirst + (nS - 1) * sh;
+  const Tlen = Tlast + (vert ? 14 : 26);
+
+  const W = vert ? Tlen : Llen, H = vert ? Llen : Tlen;
+  const P = (L, T) => vert ? [T, flip ? H - L : L] : [flip ? W - L : L, T];
+  const rectP = (L1, L2, T1, T2, rx, fill, extra) => {
+    const [xa, ya] = P(L1, T1), [xb, yb] = P(L2, T2);
+    return '<rect x="' + Math.min(xa, xb) + '" y="' + Math.min(ya, yb) +
+      '" width="' + Math.abs(xb - xa) + '" height="' + Math.abs(yb - ya) +
+      '" rx="' + rx + '" fill="' + fill + '"' + (extra || '') + '/>';
+  };
+  // corde s : graves en bas (horizontal) / à gauche (vertical)
+  const t = s => vert ? Tfirst + s * sh : Tfirst + (nS - 1 - s) * sh;
+  const caseL = f => x0 + f * fw - fw / 2;  // centre longitudinal de la case f
 
   const s2 = ['<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img">'];
 
   // touche
-  s2.push('<rect x="' + x0 + '" y="' + (TOPn - 8) + '" width="' + (N * fw) +
-    '" height="' + ((nS - 1) * sh + 16) + '" rx="4" fill="' + DIAG.board + '"/>');
+  s2.push(rectP(x0, x0 + N * fw, Tfirst - 8, Tlast + 8, 4, DIAG.board));
 
   // repères
   const INLAYS = [3, 5, 7, 9, 15, 17, 19];
-  const midY = TOPn + (nS - 1) * sh / 2;
+  const midT = (Tfirst + Tlast) / 2;
+  const dotAt = (L, T) => { const [x, y] = P(L, T);
+    return '<circle cx="' + x + '" cy="' + y + '" r="4" fill="' + DIAG.inlay + '"/>'; };
   for (let f = 1; f <= N; f++) {
-    const cx = fx(f) - fw / 2;
-    if (f === 12) {
-      s2.push('<circle cx="' + cx + '" cy="' + (midY - sh) + '" r="4" fill="' + DIAG.inlay + '"/>',
-              '<circle cx="' + cx + '" cy="' + (midY + sh) + '" r="4" fill="' + DIAG.inlay + '"/>');
-    } else if (INLAYS.includes(f)) {
-      s2.push('<circle cx="' + cx + '" cy="' + midY + '" r="4" fill="' + DIAG.inlay + '"/>');
-    }
+    if (f === 12) s2.push(dotAt(caseL(f), midT - sh), dotAt(caseL(f), midT + sh));
+    else if (INLAYS.includes(f)) s2.push(dotAt(caseL(f), midT));
   }
 
   // frettes + numéros
+  const numT = vert ? Tfirst - 22 : Tlast + 22;
   for (let f = 1; f <= N; f++) {
-    s2.push('<rect x="' + (fx(f) - 1) + '" y="' + (TOPn - 8) + '" width="2" height="' +
-      ((nS - 1) * sh + 16) + '" rx="1" fill="' + DIAG.fret + '"/>');
+    s2.push(rectP(x0 + f * fw - 1, x0 + f * fw + 1, Tfirst - 8, Tlast + 8, 1, DIAG.fret));
     if ([3, 5, 7, 9, 12, 15, 17, 19].includes(f)) {
-      s2.push('<text x="' + (fx(f) - fw / 2) + '" y="' + (H - 6) + '" text-anchor="middle"' +
+      const [x, y] = P(caseL(f), numT);
+      s2.push('<text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle"' +
         ' font-family="ui-monospace,Menlo,monospace" font-size="' + (big ? 13 : 11) + '"' +
         ' fill="' + DIAG.num + '">' + f + '</text>');
     }
   }
   // sillet
-  s2.push('<rect x="' + (x0 - 4) + '" y="' + (TOPn - 8) + '" width="5" height="' +
-    ((nS - 1) * sh + 16) + '" rx="2" fill="' + DIAG.nut + '"/>');
+  s2.push(rectP(x0 - 4, x0 + 1, Tfirst - 8, Tlast + 8, 2, DIAG.nut));
 
   // cordes
   for (let s = 0; s < nS; s++) {
     const w = 2.4 - 1.5 * (s / (nS - 1));
-    s2.push('<rect x="' + LEFTn + '" y="' + (sy(s) - w / 2) + '" width="' + (W - LEFTn - 8) +
-      '" height="' + w + '" fill="' + DIAG.string + '"/>');
+    s2.push(rectP(8, Llen - 8, t(s) - w / 2, t(s) + w / 2, 0, DIAG.string));
   }
 
-  // notes de la gamme (case 0 = corde à vide, dans la zone avant le sillet)
+  // notes de la gamme
   for (let s = 0; s < nS; s++) {
     for (let f = 0; f <= N; f++) {
       const midi = tuning.midi[s] + f;
@@ -694,8 +716,8 @@ function neckSVG(scale, tuning) {
       const iv = pcs.get(pc);
       const label = state.labels === 'notes' ? NOTE_NAMES[pc] : SCALE_LABELS[iv];
       const [bg, fg] = toneColor(iv, pc);
-      const cx = f === 0 ? LEFTn + openZone / 2 - 2 : fx(f) - fw / 2;
-      const cy = sy(s);
+      const L = f === 0 ? 8 + openZone / 2 - 2 : caseL(f);
+      const [cx, cy] = P(L, t(s));
       let fs = label.length > 1 ? 8.6 : 10;
       if (big) fs += 2.2;
       s2.push('<g class="ndot" data-midi="' + midi + '" style="cursor:pointer">');
