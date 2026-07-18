@@ -1,8 +1,7 @@
 # Guitar Chords
 
 Application web pour guitaristes et bassistes : affiche **toutes les positions
-jouables** d'un accord sur le manche (ex. CM7), avec diagrammes et écoute au
-toucher. 100 % vanilla JS, **aucune dépendance**, aucun appel serveur,
+jouables** d'un accord sur le manche (ex. CM7), avec diagrammes. 100 % vanilla JS, **aucune dépendance**, aucun appel serveur,
 installable sur smartphone (PWA), utilisable hors-ligne.
 
 ## Fichiers
@@ -83,8 +82,7 @@ extensibles dans `TUNINGS` (midi des cordes à vide, grave → aigu).
 ## Outil gammes
 
 L'onglet « Gammes » affiche une gamme sur tout le manche (manche horizontal,
-défilement tactile, notes colorées par degré ou par note, toucher une note la
-joue). Agrandissement par boutons − / + ou par
+défilement tactile, notes colorées par degré ou par note). Agrandissement par boutons − / + ou par
 pincement à deux doigts, asservi aux mêmes paliers (100 % à 300 %) : le manche est redessiné avec des cases, pastilles et textes
 plus grands ; le défilement, natif, ne concerne que l'axe du manche, la page
 gardant le défilement vertical. Quatre orientations dans ⚙ : horizontal sillet à gauche ou à droite

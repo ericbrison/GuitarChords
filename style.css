@@ -369,11 +369,8 @@ input[type="checkbox"] { width: 22px; height: 22px; }
   border-radius: 14px;
   background: var(--surface);
   padding: 8px 8px 6px;
-  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color .15s;
 }
-.card:active { border-color: var(--brass-deep); }
 .card:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 .card svg { width: 100%; height: auto; display: block; }
 .card-foot {

@@ -22,7 +22,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v25';
+const APP_VERSION = 'v26';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
@@ -339,7 +339,6 @@ function buildControls() {
   });
 
   $('moreBtn').addEventListener('click', renderBatch);
-  $('results').addEventListener('click', onCardTap);
 }
 
 function rebuildTypeSelect() {
@@ -847,7 +846,7 @@ function neckSVG(scale, tuning) {
       const [cx, cy] = P(L, t(s));
       let fs = (label.length > 1 ? 8.6 : 10) * z;
       if (big) fs += 2.2 * z;
-      s2.push('<g class="ndot" data-midi="' + midi + '" style="cursor:pointer">');
+      s2.push('<g class="ndot">');
       if (f === 0) {
         s2.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + (dotR - 1.4) + '" fill="' + DIAG.openBg +
           '" stroke="' + bg + '" stroke-width="2.4"/>');
@@ -983,83 +982,12 @@ function diagramSVG(v, tuning) {
   return s2.join('');
 }
 
-/* ============================================================
-   Audio — pincement Karplus-Strong, sans dépendance
-   ============================================================ */
-let actx = null;
-const noteCache = new Map();
-
-function pluckBuffer(midi) {
-  if (noteCache.has(midi)) return noteCache.get(midi);
-  const sr = actx.sampleRate;
-  const freq = 440 * Math.pow(2, (midi - 69) / 12);
-  const N = Math.max(2, Math.round(sr / freq));
-  const dur = 1.6, len = Math.floor(sr * dur);
-  const buf = actx.createBuffer(1, len, sr);
-  const d = buf.getChannelData(0);
-  const ring = new Float32Array(N);
-  for (let i = 0; i < N; i++) ring[i] = Math.random() * 2 - 1;
-  let idx = 0;
-  const damp = 0.996;
-  for (let i = 0; i < len; i++) {
-    const next = (idx + 1) % N;
-    const out = ring[idx];
-    ring[idx] = damp * 0.5 * (ring[idx] + ring[next]);
-    d[i] = out * (1 - i / len);
-    idx = next;
-  }
-  noteCache.set(midi, buf);
-  return buf;
-}
-
-function playVoicing(v, tuning) {
-  try {
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
-    const t0 = actx.currentTime + 0.02;
-    let k = 0;
-    for (let s = 0; s < v.frets.length; s++) {
-      if (v.frets[s] === MUTE) continue;
-      const src = actx.createBufferSource();
-      src.buffer = pluckBuffer(tuning.midi[s] + v.frets[s]);
-      const g = actx.createGain();
-      g.gain.value = 0.28;
-      src.connect(g); g.connect(actx.destination);
-      src.start(t0 + k * 0.055);
-      k++;
-    }
-  } catch (e) { /* audio indisponible : silencieux */ }
-}
-
-function playMidi(midi) {
-  try {
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
-    const src = actx.createBufferSource();
-    src.buffer = pluckBuffer(midi);
-    const g = actx.createGain();
-    g.gain.value = 0.3;
-    src.connect(g); g.connect(actx.destination);
-    src.start(actx.currentTime + 0.01);
-  } catch (e) {}
-}
-
-function onCardTap(e) {
-  const card = e.target.closest('.card');
-  if (!card) return;
-  const v = voicings[+card.dataset.idx];
-  if (v) playVoicing(v, TUNINGS.find(t => t.id === state.tuning));
-}
 
 /* ============================================================
    Démarrage + PWA
    ============================================================ */
 document.getElementById('appVersion').textContent = APP_VERSION;
 buildControls();
-$('neckWrap').addEventListener('click', e => {
-  const g = e.target.closest('.ndot');
-  if (g) playMidi(+g.dataset.midi);
-});
 $('neckZoomIn').addEventListener('click', () => neckZoomStep(1));
 $('neckZoomOut').addEventListener('click', () => neckZoomStep(-1));
 $('neckWrap').addEventListener('pointerdown', neckPointerDown);
