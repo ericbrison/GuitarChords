@@ -22,7 +22,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v29';
+const APP_VERSION = 'v30';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
@@ -1010,6 +1010,37 @@ $('tabScales').setAttribute('aria-pressed', String(state.tool === 'scales'));
 refreshCurrent();
 if (state.tool === 'scales') refresh();   // pré-rendu de l'outil accords en arrière-plan
 
+/* --- mises à jour --- */
+function updHint(txt) {
+  const el = document.getElementById('updHint');
+  if (el) el.textContent = txt;
+}
+
+async function checkForUpdate(manual) {
+  if (!('serviceWorker' in navigator)) {
+    if (manual) updHint('Indisponible dans cet environnement (aper\u00e7u).');
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) { if (manual) updHint('Service worker non actif.'); return; }
+    if (manual) updHint('Recherche\u2026');
+    await reg.update();
+    const pending = reg.installing || reg.waiting;
+    if (pending) {
+      updHint('Mise \u00e0 jour trouv\u00e9e, installation\u2026');
+      pending.addEventListener('statechange', () => {
+        if (pending.state === 'activated') updHint('Nouvelle version pr\u00eate\u2026');
+        // controllerchange rechargera la page automatiquement
+      });
+    } else if (manual) {
+      updHint('D\u00e9j\u00e0 \u00e0 jour (' + APP_VERSION + ').');
+    }
+  } catch (e) {
+    if (manual) updHint('V\u00e9rification impossible : hors-ligne\u2009?');
+  }
+}
+
 if ('serviceWorker' in navigator) {
   try {
     navigator.serviceWorker.register('sw.js');
@@ -1021,5 +1052,12 @@ if ('serviceWorker' in navigator) {
       reloaded = true;
       location.reload();
     });
+    // une PWA installée peut rester ouverte longtemps sans navigation :
+    // on vérifie aussi à chaque retour au premier plan
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkForUpdate(false);
+    });
   } catch (e) {}
 }
+document.getElementById('updHint').textContent = 'Version install\u00e9e : ' + APP_VERSION;
+document.getElementById('optUpdate').addEventListener('click', () => checkForUpdate(true));

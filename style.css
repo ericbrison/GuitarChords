@@ -611,3 +611,15 @@ select:disabled { opacity: .45; }
   color: var(--muted);
   padding: 0 1px;
 }
+
+
+.upd-btn {
+  border: 1px solid var(--brass-deep);
+  background: none;
+  color: var(--brass);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font: 14px var(--font-body);
+  cursor: pointer;
+}
+.upd-btn:active { background: var(--raise); }
