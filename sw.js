@@ -33,6 +33,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // les requêtes no-store (vérification de version) vont droit au réseau
+  if (e.request.cache === 'no-store') return;
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(hit =>
       hit ||

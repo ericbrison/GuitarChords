@@ -22,7 +22,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v31';
+const APP_VERSION = 'v32';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
@@ -1016,26 +1016,43 @@ function updHint(txt) {
   if (el) el.textContent = txt;
 }
 
+async function serverVersion() {
+  // lit la version réellement déployée, en ignorant tous les caches
+  const res = await fetch('sw.js?ts=' + Date.now(), { cache: 'no-store' });
+  const m = (await res.text()).match(/guitarchords-(v\d+)/);
+  return m ? m[1] : null;
+}
+
+async function forceRefresh() {
+  // équivalent d'un effacement du cache, sans toucher aux accords/gammes
+  // enregistrés ni aux réglages (localStorage préservé)
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+  } catch (e) {}
+  location.reload();
+}
+
 async function checkForUpdate(manual) {
   if (!('serviceWorker' in navigator)) {
     if (manual) updHint('Indisponible dans cet environnement (aper\u00e7u).');
     return;
   }
   try {
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (!reg) { if (manual) updHint('Service worker non actif.'); return; }
     if (manual) updHint('Recherche\u2026');
-    await reg.update();
-    const pending = reg.installing || reg.waiting;
-    if (pending) {
-      updHint('Mise \u00e0 jour trouv\u00e9e, installation\u2026');
-      pending.addEventListener('statechange', () => {
-        if (pending.state === 'activated') updHint('Nouvelle version pr\u00eate\u2026');
-        // controllerchange rechargera la page automatiquement
-      });
-    } else if (manual) {
-      updHint('D\u00e9j\u00e0 \u00e0 jour (' + APP_VERSION + ').');
+    const sv = await serverVersion();
+    if (sv === APP_VERSION) {
+      if (manual) updHint('D\u00e9j\u00e0 \u00e0 jour (' + APP_VERSION + ').');
+      return;
     }
+    updHint((sv ? sv + ' disponible' : 'Mise \u00e0 jour') + ', installation\u2026');
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update();
+    // si la nouvelle version n'a pas pris la main en 5 s
+    // (controllerchange aurait rechargé la page), on force
+    setTimeout(forceRefresh, 5000);
   } catch (e) {
     if (manual) updHint('V\u00e9rification impossible : hors-ligne\u2009?');
   }
@@ -1043,7 +1060,7 @@ async function checkForUpdate(manual) {
 
 if ('serviceWorker' in navigator) {
   try {
-    navigator.serviceWorker.register('sw.js');
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
     // quand une nouvelle version prend la main, recharger une fois
     // pour servir immédiatement les fichiers frais
     let reloaded = false;
