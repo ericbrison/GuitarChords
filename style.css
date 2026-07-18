@@ -467,6 +467,8 @@ footer.app {
   font: 15px var(--font-body);
   cursor: pointer;
 }
+.tools .gear { flex: 0 0 44px; height: 40px; }
+#options { margin-top: 0; margin-bottom: 4px; }
 .tools button[aria-pressed="true"] {
   background: var(--brass);
   border-color: var(--brass);

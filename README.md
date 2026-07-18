@@ -43,9 +43,12 @@ installable sur smartphone (PWA), utilisable hors-ligne.
 Installation sur smartphone : ouvrir cette URL dans Chrome/Safari →
 « Ajouter à l'écran d'accueil ». L'app fonctionne ensuite sans réseau.
 
-**Mise à jour** : après chaque push modifiant les fichiers, incrémenter
-`VERSION` dans `sw.js` (sinon le service worker servira l'ancienne version
-depuis le cache sur les appareils déjà installés).
+**Mise à jour** : après chaque push modifiant les fichiers, incrémenter la
+version aux quatre endroits (le numéro affiché en pied de page permet de
+vérifier ce qui tourne réellement sur un appareil) :
+`VERSION` dans `sw.js`, `APP_VERSION` dans `app.js`, et les suffixes
+`?vNN` des trois assets dans `index.html` (ils neutralisent le cache CDN
+de GitHub Pages, source possible de versions panachées).
 
 ### Autre hébergement statique
 

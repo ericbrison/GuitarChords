@@ -19,6 +19,8 @@ const state = {
   maxFret: 15,
 };
 
+const APP_VERSION = 'v13';
+
 /* --- thème clair / sombre / auto --- */
 const THEME_KEY = 'guitarchords.theme';
 const DIAG_THEMES = {
@@ -927,6 +929,7 @@ function onCardTap(e) {
 /* ============================================================
    Démarrage + PWA
    ============================================================ */
+document.getElementById('appVersion').textContent = APP_VERSION;
 buildControls();
 $('neckWrap').addEventListener('click', e => {
   const g = e.target.closest('.ndot');

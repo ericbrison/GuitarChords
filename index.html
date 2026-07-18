@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v13">
 </head>
 <body>
 
@@ -21,7 +21,74 @@
 <nav class="tools" aria-label="Outils">
   <button id="tabChords" aria-pressed="true">Accords</button>
   <button id="tabScales" aria-pressed="false">Gammes</button>
+  <button class="gear" id="gearBtn" aria-expanded="false" aria-controls="options" title="Options">⚙</button>
 </nav>
+
+<div id="options">
+  <div class="row">
+    <label for="optOmit5">Notes omissibles
+      <span class="hint">Quinte juste (accords de 4 sons et plus) et 9ᵉ des accords de 11/13</span>
+    </label>
+    <input type="checkbox" id="optOmit5" checked>
+  </div>
+  <div class="row">
+    <label for="optLabels">Pastilles</label>
+    <select id="optLabels">
+      <option value="intervals" selected>Intervalles</option>
+      <option value="notes">Notes</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="tuning">Accordage</label>
+    <select id="tuning"></select>
+  </div>
+  <div class="row" id="savedScalesRow" hidden>
+    <div style="flex:1">
+      <label>Mes gammes enregistrées</label>
+      <div class="saved-list" id="savedScalesList"></div>
+    </div>
+  </div>
+  <div class="row" id="savedRow" hidden>
+    <div style="flex:1">
+      <label>Mes accords enregistrés</label>
+      <div class="saved-list" id="savedList"></div>
+    </div>
+  </div>
+  <div class="row">
+    <label for="optBig">Grande taille
+      <span class="hint">Une colonne, pastilles et textes agrandis</span>
+    </label>
+    <input type="checkbox" id="optBig">
+  </div>
+  <div class="row">
+    <label for="optNeck">Manche (gammes)
+      <span class="hint">Sillet à droite pour les gauchers</span>
+    </label>
+    <select id="optNeck">
+      <option value="h-left" selected>Horizontal — sillet à gauche</option>
+      <option value="h-right">Horizontal — sillet à droite (gaucher)</option>
+      <option value="v-top">Vertical — sillet en haut</option>
+      <option value="v-bottom">Vertical — sillet en bas</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="optTheme">Thème</label>
+    <select id="optTheme">
+      <option value="auto" selected>Auto (système)</option>
+      <option value="dark">Sombre</option>
+      <option value="light">Clair</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="optMaxFret">Cases explorées</label>
+    <select id="optMaxFret">
+      <option value="12">12</option>
+      <option value="15" selected>15</option>
+      <option value="19">19</option>
+      <option value="22">22</option>
+    </select>
+  </div>
+</div>
 
 <div class="controls">
   <div class="selects">
@@ -30,7 +97,6 @@
   </div>
   <div class="selects">
     <select id="optBass" aria-label="Basse de l’accord"></select>
-    <button class="gear" id="gearBtn" aria-expanded="false" aria-controls="options" title="Options">⚙</button>
   </div>
   <div class="freechord">
     <input id="freeInput" placeholder="Accord libre… ex. CM7add11, F♯m7♭5/A"
@@ -40,71 +106,6 @@
     <button id="freeSave" title="Enregistrer ce type d’accord" aria-label="Enregistrer">★</button>
   </div>
   <div class="free-msg" id="freeMsg" role="status"></div>
-  <div id="options">
-    <div class="row">
-      <label for="optOmit5">Notes omissibles
-        <span class="hint">Quinte juste (accords de 4 sons et plus) et 9ᵉ des accords de 11/13</span>
-      </label>
-      <input type="checkbox" id="optOmit5" checked>
-    </div>
-    <div class="row">
-      <label for="optLabels">Pastilles</label>
-      <select id="optLabels">
-        <option value="intervals" selected>Intervalles</option>
-        <option value="notes">Notes</option>
-      </select>
-    </div>
-    <div class="row">
-      <label for="tuning">Accordage</label>
-      <select id="tuning"></select>
-    </div>
-    <div class="row" id="savedScalesRow" hidden>
-      <div style="flex:1">
-        <label>Mes gammes enregistrées</label>
-        <div class="saved-list" id="savedScalesList"></div>
-      </div>
-    </div>
-    <div class="row" id="savedRow" hidden>
-      <div style="flex:1">
-        <label>Mes accords enregistrés</label>
-        <div class="saved-list" id="savedList"></div>
-      </div>
-    </div>
-    <div class="row">
-      <label for="optBig">Grande taille
-        <span class="hint">Une colonne, pastilles et textes agrandis</span>
-      </label>
-      <input type="checkbox" id="optBig">
-    </div>
-    <div class="row">
-      <label for="optNeck">Manche (gammes)
-        <span class="hint">Sillet à droite pour les gauchers</span>
-      </label>
-      <select id="optNeck">
-        <option value="h-left" selected>Horizontal — sillet à gauche</option>
-        <option value="h-right">Horizontal — sillet à droite (gaucher)</option>
-        <option value="v-top">Vertical — sillet en haut</option>
-        <option value="v-bottom">Vertical — sillet en bas</option>
-      </select>
-    </div>
-    <div class="row">
-      <label for="optTheme">Thème</label>
-      <select id="optTheme">
-        <option value="auto" selected>Auto (système)</option>
-        <option value="dark">Sombre</option>
-        <option value="light">Clair</option>
-      </select>
-    </div>
-    <div class="row">
-      <label for="optMaxFret">Cases explorées</label>
-      <select id="optMaxFret">
-        <option value="12">12</option>
-        <option value="15" selected>15</option>
-        <option value="19">19</option>
-        <option value="22">22</option>
-      </select>
-    </div>
-  </div>
 </div>
 
 <div class="fretbar-wrap">
@@ -154,9 +155,9 @@
   <p class="neck-hint">Touchez une note pour l’entendre · faites défiler le manche horizontalement</p>
 </section>
 
-<footer class="app">Touchez un diagramme pour l’entendre · fonctionne hors-ligne</footer>
+<footer class="app">Touchez un diagramme pour l’entendre · fonctionne hors-ligne · <span id="appVersion"></span></footer>
 
-<script src="engine.js"></script>
-<script src="app.js"></script>
+<script src="engine.js?v13"></script>
+<script src="app.js?v13"></script>
 </body>
 </html>
