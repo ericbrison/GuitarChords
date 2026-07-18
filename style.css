@@ -167,7 +167,7 @@ button.gear[aria-expanded="true"] { color: var(--brass); border-color: var(--bra
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
-  padding: 12px 14px;
+  padding: 2px 14px;
   display: none;
 }
 #options.open { display: block; }
@@ -176,7 +176,8 @@ button.gear[aria-expanded="true"] { color: var(--brass); border-color: var(--bra
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 40px;
+  padding: 12px 0;   /* espacement identique pour chaque option,
+                        quelle que soit la hauteur de son contenu */
 }
 #options .row + .row { border-top: 1px solid var(--line); }
 #options label { color: var(--ink); font-size: 15px; }
