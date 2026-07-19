@@ -5,6 +5,15 @@
 const NOTE_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
 const NOTE_NAMES_LATIN = ['Do','Do♯','Ré','Mi♭','Mi','Fa','Fa♯','Sol','La♭','La','Si♭','Si'];
 
+/* Messages d'erreur du parseur, remplaçables par l'application (i18n) */
+let PARSE_MSGS = {
+  empty: 'Saisissez un nom d\u2019accord (ex. CM7add11).',
+  root: 'Fondamentale illisible : commencez par une note A\u2013G.',
+  frag: s => 'Fragment non reconnu : \u00ab\u202f' + s + '\u202f\u00bb',
+  incomplete: 'Accord incomplet : il faut au moins deux notes.',
+};
+function setParseMessages(m) { PARSE_MSGS = m; }
+
 const INTERVAL_LABELS = {
   0:'1', 1:'♭9', 2:'9', 3:'♭3', 4:'3', 5:'4', 6:'♭5',
   7:'5', 8:'♯5', 9:'6', 10:'♭7', 11:'7'
@@ -219,10 +228,10 @@ function parseChord(input) {
   const acc = a => (a === '#' || a === '\u266f') ? 1 : (a === 'b' || a === '\u266d') ? -1 : 0;
 
   let s = String(input || '').trim().replace(/\s+/g, '');
-  if (!s) throw new Error('Saisissez un nom d\u2019accord (ex. CM7add11).');
+  if (!s) throw new Error(PARSE_MSGS.empty);
 
   const rm = s.match(/^([A-Ga-g])([#\u266fb\u266d]?)/);
-  if (!rm) throw new Error('Fondamentale illisible : commencez par une note A\u2013G.');
+  if (!rm) throw new Error(PARSE_MSGS.root);
   const rootPc = (PC[rm[1].toLowerCase()] + acc(rm[2]) + 12) % 12;
   s = s.slice(rm[0].length);
 
@@ -290,7 +299,7 @@ function parseChord(input) {
         else if (t[2] === '11') put(flat ? 4 : 6, (flat ? '\u266d' : '\u266f') + '11');
         else                    put(flat ? 8 : 10, (flat ? '\u266d' : '\u266f') + '13');
       } else {
-        throw new Error('Fragment non reconnu : \u00ab\u202f' + s + '\u202f\u00bb');
+        throw new Error(PARSE_MSGS.frag(s));
       }
     }
   }
@@ -305,7 +314,7 @@ function parseChord(input) {
     if (!set.has(semi)) { set.add(semi); labels[semi] = extraLbl.get(semi); }
   }
   const intervals = [...set].sort((a, b) => a - b);
-  if (intervals.length < 2) throw new Error('Accord incomplet : il faut au moins deux notes.');
+  if (intervals.length < 2) throw new Error(PARSE_MSGS.incomplete);
 
   const opt = [];
   if (!no5 && fifth === 7 && set.has(7) && labels[7] === '5') opt.push(7);
@@ -319,5 +328,5 @@ function parseChord(input) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { NOTE_NAMES, NOTE_NAMES_LATIN, INTERVAL_LABELS, SCALE_LABELS, SCALES, CHORD_TYPES, TUNINGS, findVoicings, parseChord, MUTE };
+  module.exports = { NOTE_NAMES, NOTE_NAMES_LATIN, setParseMessages, INTERVAL_LABELS, SCALE_LABELS, SCALES, CHORD_TYPES, TUNINGS, findVoicings, parseChord, MUTE };
 }

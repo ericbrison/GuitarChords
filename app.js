@@ -20,14 +20,15 @@ const state = {
   omit5: true,
   labels: 'intervals',
   latin: false,
+  lang: null,           // 'fr' | 'en' ; null = pas encore choisi
   maxFret: 22,
 };
 
-const APP_VERSION = 'v37';
+const APP_VERSION = 'v38';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
-const SETT_FIELDS = ['tuning', 'labels', 'latin', 'omit5', 'maxFret', 'inv', 'theme',
+const SETT_FIELDS = ['tuning', 'labels', 'latin', 'lang', 'omit5', 'maxFret', 'inv', 'theme',
                      'big', 'neckView', 'scaleMaxFret', 'neckZoom',
                      'root', 'type', 'custom', 'bass', 'scale', 'scaleCustom', 'tool'];
 function saveSettings() {
@@ -43,6 +44,7 @@ function loadSettings() {
     if (TUNINGS.some(t => t.id === o.tuning)) state.tuning = o.tuning;
     if (o.labels === 'notes' || o.labels === 'intervals') state.labels = o.labels;
     if (typeof o.latin === 'boolean') state.latin = o.latin;
+    if (o.lang === 'fr' || o.lang === 'en') state.lang = o.lang;
     if (typeof o.omit5 === 'boolean') state.omit5 = o.omit5;
     if ([12, 15, 19, 22].includes(o.maxFret)) state.maxFret = o.maxFret;
     if (typeof o.inv === 'boolean') state.inv = o.inv;
@@ -247,6 +249,174 @@ function svgLabel(label, fs) {
   return out;
 }
 
+/* ================= i18n ================= */
+const I18N = {
+fr: {
+  tagline: 'Positions d’accords',
+  tab_chords: 'Accords', tab_scales: 'Gammes',
+  opt_update: 'Mise à jour', btn_check: 'Vérifier',
+  opt_inv: 'Renversements',
+  opt_inv_hint: 'Basse libre quand aucune basse n’est imposée dans le sélecteur',
+  opt_omit5: 'Notes omissibles',
+  opt_omit5_hint: 'Quinte juste (accords de 4 sons et plus) et 9ᵉ des accords de 11/13',
+  opt_labels: 'Pastilles', opt_labels_iv: 'Intervalles', opt_labels_notes: 'Notes',
+  opt_notation: 'Notation des notes', opt_lang: 'Langue', opt_tuning: 'Accordage',
+  saved_scales: 'Mes gammes enregistrées', saved_chords: 'Mes accords enregistrés',
+  opt_big: 'Grande taille', opt_big_hint: 'Une colonne, pastilles et textes agrandis',
+  opt_theme: 'Thème', theme_auto: 'Auto (système)', theme_dark: 'Sombre', theme_light: 'Clair',
+  opt_maxfret: 'Cases explorées (accords)',
+  aria_root: 'Fondamentale', aria_type: 'Type d’accord', aria_bass: 'Note à la basse',
+  free_ph: 'Accord libre… ex. CM7add11, F♯m7♭5/A', aria_free: 'Nom d’accord libre',
+  free_go_t: 'Chercher les positions', aria_search: 'Chercher',
+  free_save_t: 'Enregistrer ce type d’accord', aria_save: 'Enregistrer',
+  aria_fret_min: 'Première case de la plage', aria_fret_max: 'Dernière case de la plage',
+  fretbar_clear: '✕ tout le manche', fretbar_clear_a: 'Tout le manche',
+  fretbar_all: 'Tout le manche (cases 1–%s)', fretbar_range: 'Cases %s–%s',
+  aria_scale_root: 'Fondamentale de la gamme', aria_scale: 'Gamme',
+  aria_chips: 'Degrés de la gamme (toucher pour ajouter/retirer)',
+  scale_ph: 'Nom de votre gamme… ex. Penta blues perso', aria_scale_name: 'Nom de la gamme personnalisée',
+  scale_save_t: 'Enregistrer cette gamme',
+  aria_neck: 'Orientation du manche', neck_h: 'Horizontal', neck_v: 'Vertical',
+  aria_zoom: 'Agrandissement du manche', aria_zoom_out: 'Réduire', aria_zoom_in: 'Agrandir',
+  aria_frets_n: 'Nombre de cases du manche',
+  frets_15: '15 cases', frets_19: '19 cases', frets_22: '22 cases', frets_24: '24 cases',
+  neck_hint: '− / + ou pincement pour agrandir le manche',
+  footer_offline: 'Fonctionne hors-ligne',
+  grp_my_chords: '★ Mes accords', grp_my_scales: '★ Mes gammes', custom_prefix: '(libre) ',
+  msg_type_exists: 'Ce type est déjà dans la liste prédéfinie.',
+  msg_save_unavailable: 'Sauvegarde indisponible dans cet environnement (aperçu). Elle fonctionnera une fois l’app déployée.',
+  msg_chord_saved: '★ %s enregistré — transposable sur les 12 fondamentales.',
+  msg_scale_exists: 'Cette gamme est déjà dans la liste prédéfinie — modifiez un degré avant d’enregistrer.',
+  msg_scale_saved: '★ « %s » enregistrée — transposable sur les 12 fondamentales.',
+  empty_none: 'Aucune position jouable pour <b>%s</b> avec ces réglages.<br>',
+  empty_range: 'Essayez d’élargir la plage de cases (%s–%s) ou de la réinitialiser (✕).',
+  empty_omit: 'Essayez d’autoriser les notes omissibles ou une autre basse.',
+  more_btn: 'Afficher %s de plus (%s restantes)',
+  aria_delete: 'Supprimer %s',
+  chip_root_t: 'La fondamentale fait toujours partie de la gamme',
+  positions: 'position', positions_pl: 'positions',
+  upd_unavailable: 'Indisponible dans cet environnement (aperçu).',
+  upd_search: 'Recherche…',
+  upd_uptodate: 'Déjà à jour (%s).',
+  upd_avail: '%s disponible, installation…', upd_generic: 'Mise à jour, installation…',
+  upd_failed: 'Vérification impossible : hors-ligne ?',
+  upd_installed: 'Version installée : ',
+},
+en: {
+  tagline: 'Chord positions',
+  tab_chords: 'Chords', tab_scales: 'Scales',
+  opt_update: 'Update', btn_check: 'Check',
+  opt_inv: 'Inversions',
+  opt_inv_hint: 'Free bass when none is set in the selector',
+  opt_omit5: 'Omittable notes',
+  opt_omit5_hint: 'Perfect fifth (chords of 4+ notes) and the 9th of 11/13 chords',
+  opt_labels: 'Dots', opt_labels_iv: 'Intervals', opt_labels_notes: 'Notes',
+  opt_notation: 'Note names', opt_lang: 'Language', opt_tuning: 'Tuning',
+  saved_scales: 'My saved scales', saved_chords: 'My saved chords',
+  opt_big: 'Large size', opt_big_hint: 'Single column, larger dots and text',
+  opt_theme: 'Theme', theme_auto: 'Auto (system)', theme_dark: 'Dark', theme_light: 'Light',
+  opt_maxfret: 'Frets explored (chords)',
+  aria_root: 'Root note', aria_type: 'Chord type', aria_bass: 'Bass note',
+  free_ph: 'Free chord… e.g. CM7add11, F♯m7♭5/A', aria_free: 'Free chord name',
+  free_go_t: 'Find positions', aria_search: 'Search',
+  free_save_t: 'Save this chord type', aria_save: 'Save',
+  aria_fret_min: 'First fret of the range', aria_fret_max: 'Last fret of the range',
+  fretbar_clear: '✕ whole neck', fretbar_clear_a: 'Whole neck',
+  fretbar_all: 'Whole neck (frets 1–%s)', fretbar_range: 'Frets %s–%s',
+  aria_scale_root: 'Scale root', aria_scale: 'Scale',
+  aria_chips: 'Scale degrees (tap to add or remove)',
+  scale_ph: 'Your scale name… e.g. My blues penta', aria_scale_name: 'Custom scale name',
+  scale_save_t: 'Save this scale',
+  aria_neck: 'Neck orientation', neck_h: 'Horizontal', neck_v: 'Vertical',
+  aria_zoom: 'Neck zoom', aria_zoom_out: 'Zoom out', aria_zoom_in: 'Zoom in',
+  aria_frets_n: 'Number of frets shown',
+  frets_15: '15 frets', frets_19: '19 frets', frets_22: '22 frets', frets_24: '24 frets',
+  neck_hint: '− / + or pinch to zoom the neck',
+  footer_offline: 'Works offline',
+  grp_my_chords: '★ My chords', grp_my_scales: '★ My scales', custom_prefix: '(custom) ',
+  msg_type_exists: 'This type is already in the built-in list.',
+  msg_save_unavailable: 'Saving is unavailable in this environment (preview). It will work once the app is deployed.',
+  msg_chord_saved: '★ %s saved — transposable to all 12 roots.',
+  msg_scale_exists: 'This scale is already in the built-in list — change a degree before saving.',
+  msg_scale_saved: '★ “%s” saved — transposable to all 12 roots.',
+  empty_none: 'No playable position for <b>%s</b> with these settings.<br>',
+  empty_range: 'Try widening the fret range (%s–%s) or resetting it (✕).',
+  empty_omit: 'Try allowing omittable notes or a different bass.',
+  more_btn: 'Show %s more (%s remaining)',
+  aria_delete: 'Delete %s',
+  chip_root_t: 'The root is always part of the scale',
+  positions: 'position', positions_pl: 'positions',
+  upd_unavailable: 'Unavailable in this environment (preview).',
+  upd_search: 'Checking…',
+  upd_uptodate: 'Already up to date (%s).',
+  upd_avail: '%s available, installing…', upd_generic: 'Update available, installing…',
+  upd_failed: 'Check failed: offline?',
+  upd_installed: 'Installed version: ',
+},
+};
+const PARSE_I18N = {
+  fr: null,  // messages d'origine du moteur
+  en: {
+    empty: 'Enter a chord name (e.g. CM7add11).',
+    root: 'Unreadable root: start with a note A–G.',
+    frag: s => 'Unrecognized fragment: “' + s + '”',
+    incomplete: 'Incomplete chord: at least two notes are required.',
+  },
+};
+const FR_PARSE_MSGS = {
+  empty: 'Saisissez un nom d’accord (ex. CM7add11).',
+  root: 'Fondamentale illisible : commencez par une note A–G.',
+  frag: s => 'Fragment non reconnu : « ' + s + ' »',
+  incomplete: 'Accord incomplet : il faut au moins deux notes.',
+};
+const CHORD_LABELS_EN = {
+  maj: 'Major', min: 'Minor', 7: '7 (dominant)', maj7: 'Major 7', m7: 'Minor 7',
+  m7b5: 'Half-diminished', dim: 'Diminished', dim7: 'Diminished 7', aug: 'Augmented',
+  sus2: 'Sus2', sus4: 'Sus4', '7sus4': '7 sus4', 6: 'Sixth', m6: 'Minor 6',
+  add9: 'Add 9', 9: '9', m9: 'Minor 9', maj9: 'Major 9',
+};
+const SCALE_LABELS_EN = {
+  'penta-maj': 'Major pentatonic', 'penta-min': 'Minor pentatonic',
+  blues: 'Blues (minor penta + ♭5)', 'blues-maj': 'Major blues',
+  major: 'Major (Ionian)', minor: 'Natural minor (Aeolian)',
+  'harm-min': 'Harmonic minor', 'mel-min': 'Melodic minor',
+  dorian: 'Dorian', phrygian: 'Phrygian', lydian: 'Lydian',
+  mixo: 'Mixolydian', locrian: 'Locrian', whole: 'Whole tone',
+};
+const TUNING_LABELS_EN = {
+  'guitar-std': 'Guitar — standard (EADGBE)', 'guitar-dropd': 'Guitar — drop D (DADGBE)',
+  'guitar-dadgad': 'Guitar — DADGAD', 'bass-4': '4-string bass (EADG)', 'bass-5': '5-string bass (BEADG)',
+};
+function i18n(key) {
+  const d = I18N[state.lang] || I18N.fr;
+  return d[key] != null ? d[key] : (I18N.fr[key] != null ? I18N.fr[key] : key);
+}
+function i18nf(key) {
+  let s = i18n(key);
+  for (let i = 1; i < arguments.length; i++) s = s.replace('%s', arguments[i]);
+  return s;
+}
+function chordLabel(c)  { return (state.lang === 'en' && CHORD_LABELS_EN[c.id]) || c.label; }
+function scaleLabel(s)  { return (state.lang === 'en' && SCALE_LABELS_EN[s.id]) || s.label; }
+function tuningLabel(t) { return (state.lang === 'en' && TUNING_LABELS_EN[t.id]) || t.label; }
+
+function applyLang() {
+  document.documentElement.lang = state.lang;
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = i18n(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-ph]')) el.placeholder = i18n(el.dataset.i18nPh);
+  for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = i18n(el.dataset.i18nTitle);
+  for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', i18n(el.dataset.i18nAria));
+  setParseMessages(PARSE_I18N[state.lang] || FR_PARSE_MSGS);
+  for (const opt of $('tuning').options) {
+    const t = TUNINGS.find(x => x.id === opt.value);
+    if (t) opt.text = tuningLabel(t);
+  }
+  rebuildTypeSelect(); rebuildScaleSelect();
+  renderSavedList(); renderSavedScalesList();
+  $('updHint').textContent = i18n('upd_installed') + APP_VERSION;
+  refreshCurrent();
+}
+
 /* --- notation des notes (anglo-saxonne ou latine) --- */
 function noteName(pc) {
   return (state.latin ? NOTE_NAMES_LATIN : NOTE_NAMES)[pc];
@@ -276,7 +446,7 @@ function buildControls() {
   });
 
   const tn = $('tuning');
-  TUNINGS.forEach(t => tn.add(new Option(t.label, t.id)));
+  TUNINGS.forEach(t => tn.add(new Option(tuningLabel(t), t.id)));
   tn.value = state.tuning;
   tn.addEventListener('change', () => { state.tuning = tn.value; saveSettings(); refreshCurrent(); });
 
@@ -400,15 +570,15 @@ function buildControls() {
 function rebuildTypeSelect() {
   const ct = $('chordType');
   ct.innerHTML = '';
-  CHORD_TYPES.forEach(c => ct.add(new Option(c.label + (c.sym ? '  (' + c.sym + ')' : ''), c.id)));
+  CHORD_TYPES.forEach(c => ct.add(new Option(chordLabel(c) + (c.sym ? '  (' + c.sym + ')' : ''), c.id)));
   if (savedChords.length) {
     const og = document.createElement('optgroup');
-    og.label = '★ Mes accords';
+    og.label = i18n('grp_my_chords');
     savedChords.forEach(c => og.appendChild(new Option(c.sym, 'saved:' + c.sym)));
     ct.appendChild(og);
   }
   if (state.type === 'custom') {
-    ct.appendChild(new Option('(libre) ' + (state.custom ? state.custom.sym : ''), 'custom'));
+    ct.appendChild(new Option(i18n('custom_prefix') + (state.custom ? state.custom.sym : ''), 'custom'));
   }
   ct.value = state.type;
   if (ct.value !== state.type) { state.type = 'maj'; ct.value = 'maj'; }
@@ -418,7 +588,7 @@ function renderSavedList() {
   $('savedRow').hidden = savedChords.length === 0;
   $('savedList').innerHTML = savedChords.map(c =>
     '<span class="saved-item"><span>' + c.sym +
-    '</span><button data-del="' + c.sym + '" aria-label="Supprimer ' + c.sym + '">✕</button></span>'
+    '</span><button data-del="' + c.sym + '" aria-label="' + i18nf('aria_delete', c.sym) + '">\u2715</button></span>'
   ).join('');
 }
 
@@ -447,7 +617,7 @@ function applyFreeChord() {
 function saveCurrentChord() {
   const c = currentChord();
   if (CHORD_TYPES.some(x => x === c)) {
-    freeMsg('Ce type est déjà dans la liste prédéfinie.', 'err');
+    freeMsg(i18n('msg_type_exists'), 'err');
     return;
   }
   if (!savedChords.some(x => x.sym === c.sym)) {
@@ -455,13 +625,13 @@ function saveCurrentChord() {
                        opt: c.opt || [], bassIv: c.bassIv != null ? c.bassIv : null });
     if (!persistSaved()) {
       savedChords.pop();
-      freeMsg('Sauvegarde indisponible dans cet environnement (aperçu). Elle fonctionnera une fois l’app déployée.', 'err');
+      freeMsg(i18n('msg_save_unavailable'), 'err');
       return;
     }
   }
   state.type = 'saved:' + c.sym;
   rebuildTypeSelect(); renderSavedList();
-  freeMsg('★ ' + c.sym + ' enregistré — transposable sur les 12 fondamentales.', 'ok');
+  freeMsg(i18nf('msg_chord_saved', c.sym), 'ok');
   refresh();
 }
 
@@ -498,8 +668,8 @@ function updateSliderUI() {
   const all = a === 1 && z === N;
   $('fretbarClear').hidden = all;
   $('fretbarLabel').textContent = all
-    ? 'Tout le manche (cases 1\u2013' + N + ')'
-    : 'Cases ' + a + '\u2013' + z;
+    ? i18nf('fretbar_all', N)
+    : i18nf('fretbar_range', a, z);
 }
 
 function commitSlider() {
@@ -570,7 +740,7 @@ function refresh() {
   $('chordTones').innerHTML =
     chord.intervals.map(iv => toneChip(iv)).join('') +
     (foreignBass ? toneChip(bassIv, ' <small>basse</small>') : '');
-  $('chordCount').innerHTML = '<b>' + voicings.length + '</b> position' + (voicings.length > 1 ? 's' : '');
+  $('chordCount').innerHTML = '<b>' + voicings.length + '</b> ' + (voicings.length > 1 ? i18n('positions_pl') : i18n('positions'));
 
   document.title = name + chord.sym + ' — Guitar Chords';
   renderSavedList();
@@ -581,11 +751,10 @@ function refresh() {
   rendered = 0;
   if (voicings.length === 0) {
     $('results').innerHTML =
-      '<div class="empty">Aucune position jouable pour <b>' + name + chord.sym +
-      '</b> avec ces réglages.<br>' +
+      '<div class="empty">' + i18nf('empty_none', name + chord.sym) +
       (state.fretMin != null
-        ? 'Essayez d\u2019\u00e9largir la plage de cases (' + state.fretMin + '\u2013' + state.fretMax + ') ou de la r\u00e9initialiser (\u2715).'
-        : 'Essayez d\u2019autoriser les notes omissibles ou une autre basse.') + '</div>';
+        ? i18nf('empty_range', state.fretMin, state.fretMax)
+        : i18n('empty_omit')) + '</div>';
     $('moreWrap').hidden = true;
     return;
   }
@@ -622,7 +791,7 @@ function renderBatch() {
 
   const left = voicings.length - rendered;
   $('moreWrap').hidden = left <= 0;
-  if (left > 0) $('moreBtn').textContent = 'Afficher ' + Math.min(BATCH, left) + ' de plus (' + left + ' restantes)';
+  if (left > 0) $('moreBtn').textContent = i18nf('more_btn', Math.min(BATCH, left), left);
 }
 
 /* ============================================================
@@ -639,15 +808,15 @@ function setTool(t) {
 function rebuildScaleSelect() {
   const sel = $('scaleSel');
   sel.innerHTML = '';
-  SCALES.forEach(s => sel.add(new Option(s.label, s.id)));
+  SCALES.forEach(s => sel.add(new Option(scaleLabel(s), s.id)));
   if (savedScales.length) {
     const og = document.createElement('optgroup');
-    og.label = '\u2605 Mes gammes';
+    og.label = i18n('grp_my_scales');
     savedScales.forEach(s => og.appendChild(new Option(s.name, 'savedscale:' + s.name)));
     sel.appendChild(og);
   }
   if (state.scale === 'custom') {
-    sel.appendChild(new Option('(libre) ' + (state.scaleCustom ? state.scaleCustom.name : ''), 'custom'));
+    sel.appendChild(new Option(i18n('custom_prefix') + (state.scaleCustom ? state.scaleCustom.name : ''), 'custom'));
   }
   sel.value = state.scale;
   if (sel.value !== state.scale) { state.scale = 'penta-maj'; sel.value = state.scale; }
@@ -658,7 +827,7 @@ function renderSavedScalesList() {
   $('savedScalesList').innerHTML = savedScales.map(s =>
     '<span class="saved-item"><span>' + s.name +
     '</span><button data-del="' + s.name.replace(/"/g, '&quot;') +
-    '" aria-label="Supprimer ' + s.name + '">\u2715</button></span>'
+    '" aria-label="' + i18nf('aria_delete', s.name) + '">\u2715</button></span>'
   ).join('');
 }
 
@@ -683,7 +852,7 @@ function saveCurrentScale() {
   const cur = currentScale();
   const name = ($('scaleName').value || '').trim() || cur.name || cur.label;
   if (SCALES.some(s => s === cur)) {
-    scaleMsg('Cette gamme est d\u00e9j\u00e0 dans la liste pr\u00e9d\u00e9finie \u2014 modifiez un degr\u00e9 avant d\u2019enregistrer.', 'err');
+    scaleMsg(i18n('msg_scale_exists'), 'err');
     return;
   }
   const entry = { name, intervals: cur.intervals.slice() };
@@ -691,12 +860,12 @@ function saveCurrentScale() {
   if (i >= 0) savedScales[i] = entry; else savedScales.push(entry);
   if (!persistScales()) {
     if (i < 0) savedScales.pop();
-    scaleMsg('Sauvegarde indisponible dans cet environnement (aper\u00e7u). Elle fonctionnera une fois l\u2019app d\u00e9ploy\u00e9e.', 'err');
+    scaleMsg(i18n('msg_save_unavailable'), 'err');
     return;
   }
   state.scale = 'savedscale:' + name;
   rebuildScaleSelect(); renderSavedScalesList();
-  scaleMsg('\u2605 \u00ab\u202f' + name + '\u202f\u00bb enregistr\u00e9e \u2014 transposable sur les 12 fondamentales.', 'ok');
+  scaleMsg(i18nf('msg_scale_saved', name), 'ok');
   refreshScales();
 }
 
@@ -717,12 +886,12 @@ function refreshScales() {
     const pc = (state.root + iv) % 12;
     const [bg, fg] = toneColor(iv, pc);
     return '<button class="ivchip" data-iv="' + iv + '" aria-pressed="' + on + '"' +
-      (iv === 0 ? ' disabled title="La fondamentale fait toujours partie de la gamme"' : '') +
+      (iv === 0 ? ' disabled title="' + i18n('chip_root_t') + '"' : '') +
       (on ? ' style="--chipbg:' + bg + ';--chipfg:' + fg + '"' : '') +
       '><b>' + SCALE_LABELS[iv] + '</b><small>' + noteName(pc) + '</small></button>';
   }).join('');
 
-  const title = noteName(state.root) + ' \u2014 ' + (sc.name || sc.label);
+  const title = noteName(state.root) + ' \u2014 ' + (sc.name || scaleLabel(sc));
   $('scaleTitle').textContent = title;
   document.title = title + ' \u2014 Guitar Chords';
   $('scaleTones').innerHTML = sc.intervals.map(iv => {
@@ -1089,24 +1258,24 @@ async function forceRefresh() {
 
 async function checkForUpdate(manual) {
   if (!('serviceWorker' in navigator)) {
-    if (manual) updHint('Indisponible dans cet environnement (aper\u00e7u).');
+    if (manual) updHint(i18n('upd_unavailable'));
     return;
   }
   try {
-    if (manual) updHint('Recherche\u2026');
+    if (manual) updHint(i18n('upd_search'));
     const sv = await serverVersion();
     if (sv === APP_VERSION) {
-      if (manual) updHint('D\u00e9j\u00e0 \u00e0 jour (' + APP_VERSION + ').');
+      if (manual) updHint(i18nf('upd_uptodate', APP_VERSION));
       return;
     }
-    updHint((sv ? sv + ' disponible' : 'Mise \u00e0 jour') + ', installation\u2026');
+    updHint(sv ? i18nf('upd_avail', sv) : i18n('upd_generic'));
     const reg = await navigator.serviceWorker.getRegistration();
     if (reg) await reg.update();
     // si la nouvelle version n'a pas pris la main en 5 s
     // (controllerchange aurait rechargé la page), on force
     setTimeout(forceRefresh, 5000);
   } catch (e) {
-    if (manual) updHint('V\u00e9rification impossible : hors-ligne\u2009?');
+    if (manual) updHint(i18n('upd_failed'));
   }
 }
 
@@ -1128,5 +1297,30 @@ if ('serviceWorker' in navigator) {
     });
   } catch (e) {}
 }
-document.getElementById('updHint').textContent = 'Version install\u00e9e : ' + APP_VERSION;
+document.getElementById('updHint').textContent = i18n('upd_installed') + APP_VERSION;
 document.getElementById('optUpdate').addEventListener('click', () => checkForUpdate(true));
+
+/* --- langue de l'interface --- */
+(function initLang() {
+  const chosen = state.lang != null;
+  if (!chosen) {
+    state.lang = (navigator.language || 'fr').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+  }
+  const sel = $('optLang');
+  sel.value = state.lang;
+  sel.addEventListener('change', () => {
+    state.lang = sel.value; saveSettings(); applyLang();
+  });
+  applyLang();
+  if (!chosen) {
+    const ch = $('langChooser');
+    ch.hidden = false;
+    ch.addEventListener('click', e => {
+      const b = e.target.closest('button[data-lang]');
+      if (!b) return;
+      state.lang = b.dataset.lang; sel.value = state.lang;
+      saveSettings(); applyLang();
+      ch.hidden = true;
+    });
+  }
+})();

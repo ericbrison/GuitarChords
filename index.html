@@ -9,86 +9,101 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v37">
+<link rel="stylesheet" href="style.css?v38">
 </head>
 <body>
 
+<div id="langChooser" hidden>
+  <div class="lang-box">
+    <p>Choisissez votre langue<br>Choose your language</p>
+    <button data-lang="fr">Français</button>
+    <button data-lang="en">English</button>
+  </div>
+</div>
+
 <header class="app">
   <span class="wordmark">Guitar Chords<span class="dot">.</span></span>
-  <span class="tagline">Positions d’accords</span>
+  <span class="tagline" data-i18n="tagline">Positions d'accords</span>
 </header>
 
 <nav class="tools" aria-label="Outils">
-  <button id="tabChords" aria-pressed="true">Accords</button>
-  <button id="tabScales" aria-pressed="false">Gammes</button>
+  <button id="tabChords" aria-pressed="true" data-i18n="tab_chords">Accords</button>
+  <button id="tabScales" aria-pressed="false" data-i18n="tab_scales">Gammes</button>
   <button class="gear" id="gearBtn" aria-expanded="false" aria-controls="options" title="Options">⚙</button>
 </nav>
 
 <div id="options">
   <div class="row">
-    <label>Mise à jour
+    <label><span data-i18n="opt_update">Mise à jour</span>
       <span class="hint" id="updHint"></span>
     </label>
-    <button id="optUpdate" class="upd-btn">Vérifier</button>
+    <button id="optUpdate" class="upd-btn" data-i18n="btn_check">Vérifier</button>
   </div>
   <div class="row">
-    <label for="optInv">Renversements
-      <span class="hint">Basse libre quand aucune basse n’est imposée dans le sélecteur</span>
+    <label for="optInv"><span data-i18n="opt_inv">Renversements</span>
+      <span class="hint" data-i18n="opt_inv_hint">Basse libre quand aucune basse n'est imposée dans le sélecteur</span>
     </label>
     <input type="checkbox" id="optInv">
   </div>
   <div class="row">
-    <label for="optOmit5">Notes omissibles
-      <span class="hint">Quinte juste (accords de 4 sons et plus) et 9ᵉ des accords de 11/13</span>
+    <label for="optOmit5"><span data-i18n="opt_omit5">Notes omissibles</span>
+      <span class="hint" data-i18n="opt_omit5_hint">Quinte juste (accords de 4 sons et plus) et 9ᵉ des accords de 11/13</span>
     </label>
     <input type="checkbox" id="optOmit5" checked>
   </div>
   <div class="row">
-    <label for="optLabels">Pastilles</label>
+    <label for="optLabels" data-i18n="opt_labels">Pastilles</label>
     <select id="optLabels">
-      <option value="intervals" selected>Intervalles</option>
-      <option value="notes">Notes</option>
+      <option value="intervals" selected data-i18n="opt_labels_iv">Intervalles</option>
+      <option value="notes" data-i18n="opt_labels_notes">Notes</option>
     </select>
   </div>
   <div class="row">
-    <label for="optNotation">Notation des notes</label>
+    <label for="optNotation" data-i18n="opt_notation">Notation des notes</label>
     <select id="optNotation">
       <option value="anglo" selected>A, B, C…</option>
       <option value="latin">Do, Ré, Mi…</option>
     </select>
   </div>
   <div class="row">
-    <label for="tuning">Accordage</label>
+    <label for="optLang" data-i18n="opt_lang">Langue</label>
+    <select id="optLang">
+      <option value="fr">Français</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="tuning" data-i18n="opt_tuning">Accordage</label>
     <select id="tuning"></select>
   </div>
   <div class="row" id="savedScalesRow" hidden>
     <div style="flex:1">
-      <label>Mes gammes enregistrées</label>
+      <label data-i18n="saved_scales">Mes gammes enregistrées</label>
       <div class="saved-list" id="savedScalesList"></div>
     </div>
   </div>
   <div class="row" id="savedRow" hidden>
     <div style="flex:1">
-      <label>Mes accords enregistrés</label>
+      <label data-i18n="saved_chords">Mes accords enregistrés</label>
       <div class="saved-list" id="savedList"></div>
     </div>
   </div>
   <div class="row">
-    <label for="optBig">Grande taille
-      <span class="hint">Une colonne, pastilles et textes agrandis</span>
+    <label for="optBig"><span data-i18n="opt_big">Grande taille</span>
+      <span class="hint" data-i18n="opt_big_hint">Une colonne, pastilles et textes agrandis</span>
     </label>
     <input type="checkbox" id="optBig">
   </div>
   <div class="row">
-    <label for="optTheme">Thème</label>
+    <label for="optTheme" data-i18n="opt_theme">Thème</label>
     <select id="optTheme">
-      <option value="auto" selected>Auto (système)</option>
-      <option value="dark">Sombre</option>
-      <option value="light">Clair</option>
+      <option value="auto" selected data-i18n="theme_auto">Auto (système)</option>
+      <option value="dark" data-i18n="theme_dark">Sombre</option>
+      <option value="light" data-i18n="theme_light">Clair</option>
     </select>
   </div>
   <div class="row">
-    <label for="optMaxFret">Cases explorées (accords)</label>
+    <label for="optMaxFret" data-i18n="opt_maxfret">Cases explorées (accords)</label>
     <select id="optMaxFret">
       <option value="12">12</option>
       <option value="15">15</option>
@@ -100,17 +115,17 @@
 
 <div class="controls">
   <div class="selects chord-line">
-    <select id="rootSel" aria-label="Fondamentale"></select>
-    <select id="chordType" aria-label="Type d’accord"></select>
+    <select id="rootSel" data-i18n-aria="aria_root" aria-label="Fondamentale"></select>
+    <select id="chordType" data-i18n-aria="aria_type" aria-label="Type d'accord"></select>
     <span class="slash-sep" aria-hidden="true">/</span>
-    <select id="optBass" aria-label="Note à la basse"></select>
+    <select id="optBass" data-i18n-aria="aria_bass" aria-label="Note à la basse"></select>
   </div>
   <div class="freechord">
-    <input id="freeInput" placeholder="Accord libre… ex. CM7add11, F♯m7♭5/A"
+    <input id="freeInput" data-i18n-ph="free_ph" placeholder="Accord libre… ex. CM7add11, F♯m7♭5/A"
            autocapitalize="sentences" autocomplete="off" spellcheck="false"
-           aria-label="Nom d’accord libre">
-    <button id="freeGo" title="Chercher les positions" aria-label="Chercher">→</button>
-    <button id="freeSave" title="Enregistrer ce type d’accord" aria-label="Enregistrer">★</button>
+           data-i18n-aria="aria_free" aria-label="Nom d'accord libre">
+    <button id="freeGo" data-i18n-title="free_go_t" title="Chercher les positions" data-i18n-aria="aria_search" aria-label="Chercher">→</button>
+    <button id="freeSave" data-i18n-title="free_save_t" title="Enregistrer ce type d'accord" data-i18n-aria="aria_save" aria-label="Enregistrer">★</button>
   </div>
   <div class="free-msg" id="freeMsg" role="status"></div>
 </div>
@@ -119,14 +134,14 @@
   <div class="range2" id="range2">
     <div class="range2-track"><div class="range2-fill" id="rangeFill"></div></div>
     <input type="range" id="fretMinR" min="1" max="22" step="1" value="1"
-           aria-label="Première case de la plage">
+           data-i18n-aria="aria_fret_min" aria-label="Première case de la plage">
     <input type="range" id="fretMaxR" min="1" max="22" step="1" value="22"
-           aria-label="Dernière case de la plage">
+           data-i18n-aria="aria_fret_max" aria-label="Dernière case de la plage">
     <div class="range2-scale" id="rangeScale"></div>
   </div>
   <div class="fretbar-info">
     <span id="fretbarLabel"></span>
-    <button id="fretbarClear" hidden aria-label="Tout le manche">✕ tout le manche</button>
+    <button id="fretbarClear" hidden data-i18n="fretbar_clear" data-i18n-aria="fretbar_clear_a" aria-label="Tout le manche">✕ tout le manche</button>
   </div>
 </div>
 
@@ -143,15 +158,15 @@
 
 <section id="toolScales">
   <div class="selects">
-    <select id="scaleRoot" aria-label="Fondamentale de la gamme"></select>
-    <select id="scaleSel" aria-label="Gamme"></select>
+    <select id="scaleRoot" data-i18n-aria="aria_scale_root" aria-label="Fondamentale de la gamme"></select>
+    <select id="scaleSel" data-i18n-aria="aria_scale" aria-label="Gamme"></select>
   </div>
-  <div class="ivchips" id="ivChips" aria-label="Degrés de la gamme (toucher pour ajouter/retirer)"></div>
+  <div class="ivchips" id="ivChips" data-i18n-aria="aria_chips" aria-label="Degrés de la gamme (toucher pour ajouter/retirer)"></div>
   <div class="freechord">
-    <input id="scaleName" placeholder="Nom de votre gamme… ex. Penta blues perso"
+    <input id="scaleName" data-i18n-ph="scale_ph" placeholder="Nom de votre gamme… ex. Penta blues perso"
            autocapitalize="sentences" autocomplete="off" spellcheck="false"
-           aria-label="Nom de la gamme personnalisée">
-    <button id="scaleSave" title="Enregistrer cette gamme" aria-label="Enregistrer">★</button>
+           data-i18n-aria="aria_scale_name" aria-label="Nom de la gamme personnalisée">
+    <button id="scaleSave" data-i18n-title="scale_save_t" title="Enregistrer cette gamme" data-i18n-aria="aria_save" aria-label="Enregistrer">★</button>
   </div>
   <div class="free-msg" id="scaleMsg" role="status"></div>
   <div class="chord-banner">
@@ -159,29 +174,29 @@
     <span class="chord-tones" id="scaleTones"></span>
   </div>
   <div class="selects neck-opts">
-    <select id="optNeck" aria-label="Orientation du manche">
-      <option value="h-left" selected>Horizontal</option>
-      <option value="v-top">Vertical</option>
+    <select id="optNeck" data-i18n-aria="aria_neck" aria-label="Orientation du manche">
+      <option value="h-left" selected data-i18n="neck_h">Horizontal</option>
+      <option value="v-top" data-i18n="neck_v">Vertical</option>
     </select>
-    <span class="neck-zoom" role="group" aria-label="Agrandissement du manche">
-      <button id="neckZoomOut" aria-label="Réduire">−</button>
-      <span id="neckZoomLabel">100 %</span>
-      <button id="neckZoomIn" aria-label="Agrandir">+</button>
+    <span class="neck-zoom" role="group" data-i18n-aria="aria_zoom" aria-label="Agrandissement du manche">
+      <button id="neckZoomOut" data-i18n-aria="aria_zoom_out" aria-label="Réduire">−</button>
+      <span id="neckZoomLabel">100 %</span>
+      <button id="neckZoomIn" data-i18n-aria="aria_zoom_in" aria-label="Agrandir">+</button>
     </span>
-    <select id="scaleFrets" aria-label="Nombre de cases du manche">
-      <option value="15">15 cases</option>
-      <option value="19">19 cases</option>
-      <option value="22" selected>22 cases</option>
-      <option value="24">24 cases</option>
+    <select id="scaleFrets" data-i18n-aria="aria_frets_n" aria-label="Nombre de cases du manche">
+      <option value="15" data-i18n="frets_15">15 cases</option>
+      <option value="19" data-i18n="frets_19">19 cases</option>
+      <option value="22" selected data-i18n="frets_22">22 cases</option>
+      <option value="24" data-i18n="frets_24">24 cases</option>
     </select>
   </div>
   <div class="neck-wrap" id="neckWrap"><div class="neck-canvas" id="neckCanvas"></div></div>
-  <p class="neck-hint">− / + ou pincement pour agrandir le manche</p>
+  <p class="neck-hint" data-i18n="neck_hint">− / + ou pincement pour agrandir le manche</p>
 </section>
 
-<footer class="app">Fonctionne hors-ligne · <span id="appVersion"></span></footer>
+<footer class="app"><span data-i18n="footer_offline">Fonctionne hors-ligne</span> · <span id="appVersion"></span></footer>
 
-<script src="engine.js?v37"></script>
-<script src="app.js?v37"></script>
+<script src="engine.js?v38"></script>
+<script src="app.js?v38"></script>
 </body>
 </html>
