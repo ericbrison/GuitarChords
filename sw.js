@@ -1,6 +1,6 @@
 /* Service worker — cache-first, hors-ligne complet.
    Incrémentez VERSION à chaque mise à jour des fichiers. */
-const VERSION = 'guitarchords-v6';
+const VERSION = 'guitarchords-v7';
 const ASSETS = [
   './',
   './index.html',

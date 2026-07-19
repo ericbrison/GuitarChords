@@ -3,6 +3,7 @@
    ============================================================ */
 
 const NOTE_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const NOTE_NAMES_LATIN = ['Do','Do♯','Ré','Mi♭','Mi','Fa','Fa♯','Sol','La♭','La','Si♭','Si'];
 
 const INTERVAL_LABELS = {
   0:'1', 1:'♭9', 2:'9', 3:'♭3', 4:'3', 5:'4', 6:'♭5',
@@ -318,5 +319,5 @@ function parseChord(input) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { NOTE_NAMES, INTERVAL_LABELS, SCALE_LABELS, SCALES, CHORD_TYPES, TUNINGS, findVoicings, parseChord, MUTE };
+  module.exports = { NOTE_NAMES, NOTE_NAMES_LATIN, INTERVAL_LABELS, SCALE_LABELS, SCALES, CHORD_TYPES, TUNINGS, findVoicings, parseChord, MUTE };
 }

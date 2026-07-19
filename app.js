@@ -19,14 +19,15 @@ const state = {
   neckZoom: 1,          // agrandissement du manche par re-rendu (pas de zoom gestuel)
   omit5: true,
   labels: 'intervals',
+  latin: false,
   maxFret: 22,
 };
 
-const APP_VERSION = 'v35';
+const APP_VERSION = 'v36';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
-const SETT_FIELDS = ['tuning', 'labels', 'omit5', 'maxFret', 'inv', 'theme',
+const SETT_FIELDS = ['tuning', 'labels', 'latin', 'omit5', 'maxFret', 'inv', 'theme',
                      'big', 'neckView', 'scaleMaxFret', 'neckZoom',
                      'root', 'type', 'custom', 'bass', 'scale', 'scaleCustom', 'tool'];
 function saveSettings() {
@@ -41,6 +42,7 @@ function loadSettings() {
     const o = JSON.parse(localStorage.getItem(SETT_KEY) || '{}');
     if (TUNINGS.some(t => t.id === o.tuning)) state.tuning = o.tuning;
     if (o.labels === 'notes' || o.labels === 'intervals') state.labels = o.labels;
+    if (typeof o.latin === 'boolean') state.latin = o.latin;
     if (typeof o.omit5 === 'boolean') state.omit5 = o.omit5;
     if ([12, 15, 19, 22].includes(o.maxFret)) state.maxFret = o.maxFret;
     if (typeof o.inv === 'boolean') state.inv = o.inv;
@@ -231,12 +233,22 @@ function pushHash() {
   } catch (e) {}
 }
 
+/* --- notation des notes (anglo-saxonne ou latine) --- */
+function noteName(pc) {
+  return (state.latin ? NOTE_NAMES_LATIN : NOTE_NAMES)[pc];
+}
+function relabelNoteSelects() {
+  for (const id of ['rootSel', 'scaleRoot']) {
+    for (const opt of $(id).options) opt.text = noteName(+opt.value);
+  }
+}
+
 /* --- contrôles --- */
 function buildControls() {
   const rs = $('rootSel');
   for (let i = 0; i < 12; i++) {
     const pc = (9 + i) % 12;                    // de A à G♯
-    rs.add(new Option(NOTE_NAMES[pc], String(pc)));
+    rs.add(new Option(noteName(pc), String(pc)));
   }
   rs.value = String(state.root);
   rs.addEventListener('change', () => { state.root = +rs.value; refresh(); });
@@ -301,6 +313,11 @@ function buildControls() {
   $('optMaxFret').value = String(state.maxFret);
   $('optOmit5').addEventListener('change', e => { state.omit5 = e.target.checked; saveSettings(); refresh(); });
   $('optLabels').addEventListener('change', e => { state.labels = e.target.value; saveSettings(); refreshCurrent(); });
+  $('optNotation').value = state.latin ? 'latin' : 'anglo';
+  $('optNotation').addEventListener('change', e => {
+    state.latin = e.target.value === 'latin';
+    saveSettings(); relabelNoteSelects(); refreshCurrent();
+  });
   $('optMaxFret').addEventListener('change', e => {
     state.maxFret = +e.target.value;
     saveSettings();
@@ -345,7 +362,7 @@ function buildControls() {
   const sr = $('scaleRoot');
   for (let i = 0; i < 12; i++) {
     const pc = (9 + i) % 12;                    // de A à G♯
-    sr.add(new Option(NOTE_NAMES[pc], String(pc)));
+    sr.add(new Option(noteName(pc), String(pc)));
   }
   sr.value = String(state.root);
   sr.addEventListener('change', () => { state.root = +sr.value; refreshScales(); });
@@ -491,7 +508,7 @@ function rebuildBassSelect(chord) {
   sel.add(new Option('—', ''));   // rien d'imposé
   for (let i = 0; i < 12; i++) {
     const pc = (9 + i) % 12;                    // de A à G♯
-    sel.add(new Option(NOTE_NAMES[pc], String((pc - state.root + 12) % 12)));
+    sel.add(new Option(noteName(pc), String((pc - state.root + 12) % 12)));
   }
   sel.value = state.bass == null ? '' : String(state.bass);
 }
@@ -525,16 +542,16 @@ function refresh() {
   }
   updateSliderUI();
 
-  const name = NOTE_NAMES[state.root];
+  const name = noteName(state.root);
   const slash = bassIv != null && bassIv !== 0
-    ? '<span class="slash">/' + NOTE_NAMES[(state.root + bassIv) % 12] + '</span>' : '';
+    ? '<span class="slash">/' + noteName((state.root + bassIv) % 12) + '</span>' : '';
   $('chordName').innerHTML = name + (chord.sym ? '<sup>' + chord.sym + '</sup>' : '') + slash;
   const toneChip = (iv, extra) => {
     const pc = (state.root + iv) % 12;
     const lbl = (chord.labels && chord.labels[iv]) || INTERVAL_LABELS[iv];
     const [bg, fg] = toneColor(iv, pc);
     return '<span class="tone"><i style="background:' + bg + ';color:' + fg + '">' +
-           lbl + '</i>' + NOTE_NAMES[pc] + (extra || '') + '</span>';
+           lbl + '</i>' + noteName(pc) + (extra || '') + '</span>';
   };
   $('chordTones').innerHTML =
     chord.intervals.map(iv => toneChip(iv)).join('') +
@@ -688,17 +705,17 @@ function refreshScales() {
     return '<button class="ivchip" data-iv="' + iv + '" aria-pressed="' + on + '"' +
       (iv === 0 ? ' disabled title="La fondamentale fait toujours partie de la gamme"' : '') +
       (on ? ' style="--chipbg:' + bg + ';--chipfg:' + fg + '"' : '') +
-      '><b>' + SCALE_LABELS[iv] + '</b><small>' + NOTE_NAMES[pc] + '</small></button>';
+      '><b>' + SCALE_LABELS[iv] + '</b><small>' + noteName(pc) + '</small></button>';
   }).join('');
 
-  const title = NOTE_NAMES[state.root] + ' \u2014 ' + (sc.name || sc.label);
+  const title = noteName(state.root) + ' \u2014 ' + (sc.name || sc.label);
   $('scaleTitle').textContent = title;
   document.title = title + ' \u2014 Guitar Chords';
   $('scaleTones').innerHTML = sc.intervals.map(iv => {
     const pc = (state.root + iv) % 12;
     const [bg, fg] = toneColor(iv, pc);
     return '<span class="tone"><i style="background:' + bg + ';color:' + fg + '">' +
-      SCALE_LABELS[iv] + '</i>' + NOTE_NAMES[pc] + '</span>';
+      SCALE_LABELS[iv] + '</i>' + noteName(pc) + '</span>';
   }).join('');
   $('scaleName').value = state.scale.startsWith('savedscale:') ? sc.name
     : state.scale === 'custom' ? (sc.name || '') : '';
@@ -868,7 +885,7 @@ function neckSVG(scale, tuning) {
       const pc = midi % 12;
       if (!pcs.has(pc)) continue;
       const iv = pcs.get(pc);
-      const label = state.labels === 'notes' ? NOTE_NAMES[pc] : SCALE_LABELS[iv];
+      const label = state.labels === 'notes' ? noteName(pc) : SCALE_LABELS[iv];
       const [bg, fg] = toneColor(iv, pc);
       const L = f === 0 ? 8 + openZone / 2 - 2 : caseL(f);
       const [cx, cy] = P(L, t(s));
@@ -901,7 +918,7 @@ const NROWS = 4;
 
 function cardHTML(v, idx, tuning) {
   const bass = v.inversion
-    ? '<span class="badge">/' + NOTE_NAMES[(state.root + v.bassIv) % 12] + '</span>' : '';
+    ? '<span class="badge">/' + noteName((state.root + v.bassIv) % 12) + '</span>' : '';
   const txt = v.frets.map(f => f === MUTE ? 'x' : f).join('·');
   return '<button class="card" data-idx="' + idx + '" aria-label="Position case ' + v.baseFret + ', ' + txt + '">' +
     diagramSVG(v, tuning) +
@@ -984,7 +1001,7 @@ function diagramSVG(v, tuning) {
     const midi = tuning.midi[s] + f;
     const pc = midi % 12;
     const iv = curPcs.get(pc);
-    const label = state.labels === 'notes' ? NOTE_NAMES[pc]
+    const label = state.labels === 'notes' ? noteName(pc)
       : ((curChord.labels && curChord.labels[iv]) || INTERVAL_LABELS[iv]);
     const [bg, fg] = toneColor(iv, pc);
     let small = label.length > 2 ? 7.4 : label.length > 1 ? 8.2 : 9.5;
