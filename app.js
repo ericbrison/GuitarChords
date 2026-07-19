@@ -23,7 +23,7 @@ const state = {
   maxFret: 22,
 };
 
-const APP_VERSION = 'v36';
+const APP_VERSION = 'v37';
 
 /* --- persistance de toutes les options --- */
 const SETT_KEY = 'guitarchords.settings';
@@ -231,6 +231,20 @@ function pushHash() {
     }
     history.replaceState(null, '', '#' + new URLSearchParams(p));
   } catch (e) {}
+}
+
+/* Les glyphes ♯/♭ des pastilles proviennent d'une police de
+   substitution dont la ligne de base est trop basse (effet « indice ») :
+   on les remonte via des tspans à décalage compensé. */
+function svgLabel(label, fs) {
+  const up = +(fs * 0.16).toFixed(1);
+  let out = '', cur = 0;
+  for (const ch of String(label)) {
+    const want = (ch === '\u266f' || ch === '\u266d') ? -up : 0;
+    if (want !== cur) { out += '<tspan dy="' + (want - cur) + '">' + ch + '</tspan>'; cur = want; }
+    else out += ch;
+  }
+  return out;
 }
 
 /* --- notation des notes (anglo-saxonne ou latine) --- */
@@ -896,12 +910,12 @@ function neckSVG(scale, tuning) {
         s2.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + (dotR - 1.4) + '" fill="' + DIAG.openBg +
           '" stroke="' + bg + '" stroke-width="2.4"/>');
         s2.push('<text x="' + cx + '" y="' + (cy + fs * .36) + '" text-anchor="middle" font-size="' + (fs - 1) +
-          '" font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="' + bg + '">' + label + '</text>');
+          '" font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="' + bg + '">' + svgLabel(label, fs - 1) + '</text>');
       } else {
         s2.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + dotR + '" fill="' + bg +
           '" stroke="' + (iv === 0 ? DIAG.nut : DIAG.dotStroke) + '" stroke-width="' + (iv === 0 ? 2 : 1) + '"/>');
         s2.push('<text x="' + cx + '" y="' + (cy + fs * .36) + '" text-anchor="middle" font-size="' + fs +
-          '" font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="' + fg + '">' + label + '</text>');
+          '" font-weight="700" font-family="ui-monospace,Menlo,monospace" fill="' + fg + '">' + svgLabel(label, fs) + '</text>');
       }
       s2.push('</g>');
     }
@@ -1012,14 +1026,14 @@ function diagramSVG(v, tuning) {
         ' stroke="' + bg + '" stroke-width="2.4"/>');
       s2.push('<text x="' + x + '" y="' + (TOP - 13 + small * .36) + '" text-anchor="middle"' +
         ' font-size="' + (small - 1) + '" font-weight="700"' +
-        ' font-family="ui-monospace,Menlo,monospace" fill="' + bg + '">' + label + '</text>');
+        ' font-family="ui-monospace,Menlo,monospace" fill="' + bg + '">' + svgLabel(label, small - 1) + '</text>');
     } else {
       const cy = fy(f - base) + fretH / 2;
       s2.push('<circle cx="' + x + '" cy="' + cy + '" r="' + dotR + '" fill="' + bg + '"' +
         ' stroke="' + DIAG.dotStroke + '" stroke-width="1"/>');
       s2.push('<text x="' + x + '" y="' + (cy + small * .36) + '" text-anchor="middle"' +
         ' font-size="' + small + '" font-weight="700"' +
-        ' font-family="ui-monospace,Menlo,monospace" fill="' + fg + '">' + label + '</text>');
+        ' font-family="ui-monospace,Menlo,monospace" fill="' + fg + '">' + svgLabel(label, small) + '</text>');
     }
   }
 
